@@ -32,7 +32,10 @@
             <img src="../assets/aria2-tip-2.png" alt="">
           </n-alert>
           <n-form-item>
+            <n-space>
             <n-button type="primary" @click="testAria2">测试并保存</n-button>
+            <n-button type="primary" @click="saveAria2Direct" v-if="isSafari.value">不测试保存</n-button>
+            </n-space>
           </n-form-item>
         </n-form>
       </n-collapse-item>
@@ -101,7 +104,7 @@ import { ref } from '@vue/reactivity';
 import { onMounted } from '@vue/runtime-core';
 import http from '../utils/axios'
 import { NForm, NFormItem, NButton, NInput, NCollapse, NCollapseItem, NSpace, NSwitch, useDialog, NAlert, NLog, NIcon } from 'naive-ui'
-import { ZoomQuestion } from '@vicons/tabler'
+import { Browser, ZoomQuestion } from '@vicons/tabler'
 import {proxy as proxyDefault} from '../config'
 const logs = ref([
   '手机注册登陆',
@@ -121,6 +124,9 @@ const aria2Data = ref({
 })
 const replaceData = ref({
   url: ''
+})
+const isSafari = ref({
+  value: false
 })
 const testAria2 = () => {
   let postData:any = {
@@ -149,6 +155,11 @@ const testAria2 = () => {
       }
     })
     .catch(error => console.error('Error:', error))
+}
+
+const saveAria2Direct = () => {
+  window.localStorage.setItem('pikpakAria2', JSON.stringify(aria2Data.value))
+  window.$message.success('保存成功')
 }
 const saveReplace = () => {
   window.localStorage.setItem('pikpakReplace', JSON.stringify(replaceData.value))
@@ -190,6 +201,11 @@ const proxyReset = () => {
 onMounted(() => {
   let aria2 = JSON.parse(window.localStorage.getItem('pikpakAria2') || '{}')
   let replace = JSON.parse(window.localStorage.getItem('pikpakReplace') || '{}')
+  var userAgent = navigator.userAgent
+  console.log(userAgent)
+  if (userAgent.indexOf("Safari") > -1 && userAgent.indexOf("Macintosh") > -1 && userAgent.indexOf("Edg") === -1 && userAgent.indexOf("Chromme") === -1) {
+    isSafari.value.value = true
+  }
   if(aria2.dir === undefined) {
     aria2.dir = true
   }
