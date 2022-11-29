@@ -675,7 +675,7 @@ import axios from 'axios';
   const showAddUrl = ref(false)
   const showCopy = ref(false)
   const showAriaOption = ref(false)
-  const pushOrigin = ref(false)
+  const pushOrigin = ref(true)
   const newUrl = ref()
   const taskRef = ref()
   const firstFolder = computed(() => {
