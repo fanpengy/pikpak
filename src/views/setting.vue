@@ -67,7 +67,7 @@
       <n-collapse-item name="5" title="替换设置">
         <n-form label-width="100px" label-align="left" label-placement="left">
           <n-form-item label="url：">
-            <n-input v-model:value="replaceData.url"></n-input>
+            <n-input v-model:value="replaceData.url" placeholder="格式像这样161.117.80.120"></n-input>
           </n-form-item>
           <n-form-item>
             <n-button type="primary" @click="saveReplace">保存</n-button>
