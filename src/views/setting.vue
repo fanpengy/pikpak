@@ -61,6 +61,16 @@
         <n-button type="primary" @click="proxyPost">保存设置</n-button>
         <n-text @click="proxyReset">恢复默认</n-text>
       </n-collapse-item>
+      <n-collapse-item name="5" title="替换设置">
+        <n-form label-width="100px" label-align="left" label-placement="left">
+          <n-form-item label="url：">
+            <n-input v-model:value="replaceData.url"></n-input>
+          </n-form-item>
+          <n-form-item>
+            <n-button type="primary" @click="saveReplace">保存</n-button>
+          </n-form-item>
+        </n-form>
+      </n-collapse-item>
       <n-collapse-item title="关于" name="2">
         <n-space>
           <a href="https://mypikpak.com/" target="_blank" class="n-button">官方网站</a>
@@ -109,6 +119,9 @@ const aria2Data = ref({
   token: '',
   dir: true
 })
+const replaceData = ref({
+  url: ''
+})
 const testAria2 = () => {
   let postData:any = {
       id:'',
@@ -136,6 +149,9 @@ const testAria2 = () => {
       }
     })
     .catch(error => console.error('Error:', error))
+}
+const saveReplace = () => {
+  window.localStorage.setItem('pikpakReplace', JSON.stringify(replaceData.value))
 }
 const loginSwitch = ref(false)
 const loginData = ref({
@@ -173,11 +189,15 @@ const proxyReset = () => {
 }
 onMounted(() => {
   let aria2 = JSON.parse(window.localStorage.getItem('pikpakAria2') || '{}')
+  let replace = JSON.parse(window.localStorage.getItem('pikpakReplace') || '{}')
   if(aria2.dir === undefined) {
     aria2.dir = true
   }
   if(aria2.host) {
     aria2Data.value = aria2
+  }
+  if(replace.url) {
+    replaceData.value = replace
   }
   let login = JSON.parse(window.localStorage.getItem('pikpakLoginData') || '{}')
   if(login.username && login.password) {
