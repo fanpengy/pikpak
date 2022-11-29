@@ -121,6 +121,7 @@ const testAria2 = () => {
   }
   fetch(aria2Data.value.host, {
       method: 'POST',
+      mode: 'cors',
       body: JSON.stringify(postData),
       headers: new Headers({
       'Content-Type': 'application/json'
