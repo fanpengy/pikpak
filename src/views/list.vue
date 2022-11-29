@@ -87,6 +87,16 @@
             删除所选
           </n-tooltip>
         </div>
+        <div class="toolbar-item" @click="rmFile(checkedRowKeys)">
+          <n-tooltip>
+            <template #trigger>
+              <n-icon>
+                <icon-delete></icon-delete>
+              </n-icon>
+            </template>
+            彻底删除所选
+          </n-tooltip>
+        </div>
       </div>
     </div>
     <n-modal v-model:show="showAddUrl">
@@ -242,7 +252,7 @@ import { h, computed, onMounted, watch, nextTick } from '@vue/runtime-core'
 import http, { notionHttp } from '../utils/axios'
 import { useRoute, useRouter } from 'vue-router'
 import { DataTableColumns, NDataTable, NTime, NEllipsis, NModal, NCard, NInput, NBreadcrumb, NBreadcrumbItem, NIcon, useThemeVars, NButton, NTooltip, NSpace, NScrollbar, NSpin, NDropdown, useDialog, NAlert, useNotification, NotificationReactive, NSelect, NForm, NFormItem, NTag, NText, NInputGroup } from 'naive-ui'
-import { CirclePlus, CircleX, Dots, Share, Copy as IconCopy, SwitchHorizontal, LetterA, ZoomQuestion } from '@vicons/tabler'
+import { CirclePlus, CircleX, Dots, Share, Copy as IconCopy, SwitchHorizontal, LetterA, ZoomQuestion, Trash as IconDelete } from '@vicons/tabler'
 import { byteConvert } from '../utils'
 import PlyrVue from '../components/Plyr.vue'
 import TaskVue from '../components/Task.vue'
@@ -672,6 +682,19 @@ import axios from 'axios';
   }
   const deleteFile = (id:string | string[]) => {
     http.post('https://api-drive.mypikpak.com/drive/v1/files:batchTrash', {
+      ids: typeof id === 'string' ? [id] : id
+    })
+      .then(() => {
+        window.$message.success('删除成功')
+        pageToken.value = ''
+        if(typeof id === 'object') {
+          checkedRowKeys.value = []
+        }
+        getFileList()
+      })
+  }
+  const rmFile = (id:string | string[]) => {
+    http.post('https://api-drive.mypikpak.com/drive/v1/files:batchDelete', {
       ids: typeof id === 'string' ? [id] : id
     })
       .then(() => {
