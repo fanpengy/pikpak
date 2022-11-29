@@ -953,15 +953,11 @@ import axios from 'axios';
     let medias = res.data.medias
     let result = medias ? medias.find((media:any) => media.media_name === '1080P') : undefined
     let url_1080 = result ? result.link.url : undefined
-    console.log('1080p ' + url_1080)
     result = medias ? medias.find((media:any) => media.media_name === '720P') : undefined
     let url_720 = result ? result.link.url : undefined
-    console.log('720p ' + url_720)
     result = medias ? medias.find((media:any) => media.media_name === '480P') : undefined
     let url_480 = result ? result.link.url : undefined
-    console.log('480p ' + url_480)
     let url = res.data.web_content_link
-    console.log('origin ' + url)
     let postUrl = ''
     const out = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00').replace(/.mp4/g, 's.mp4')
     let postData:any = {
@@ -988,7 +984,6 @@ import axios from 'axios';
       postUrl = url_1080.replace(/dl.*.com/g,replaceDomain)
       postData.params[0][0] = postUrl
       aria2Config.value.command_1080 = curl.replace('postdata', JSON.stringify(postData))
-      console.log(aria2Config.value.command_1080)
       aria2Config.value.url_1080 = postUrl
       aria2Config.value.url_1080_origin = url_1080
     }
@@ -998,7 +993,6 @@ import axios from 'axios';
       postUrl = url_720.replace(/dl.*.com/g,replaceDomain)
       postData.params[0][0] = postUrl
       aria2Config.value.command_720 = curl.replace('postdata', JSON.stringify(postData))
-      console.log(aria2Config.value.command_720)
       aria2Config.value.url_720 = postUrl
       aria2Config.value.url_720_origin = url_720
     }
@@ -1008,7 +1002,6 @@ import axios from 'axios';
       postUrl = url_480.replace(/dl.*.com/g,replaceDomain)
       postData.params[0][0] = postUrl
       aria2Config.value.command_480 = curl.replace('postdata', JSON.stringify(postData))
-      console.log(aria2Config.value.command_480)
       aria2Config.value.url_480 = postUrl
       aria2Config.value.url_480_origin = url_480
     }
