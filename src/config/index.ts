@@ -14,7 +14,7 @@ export const proxy = [
   'https://pikpak.yang-s.online',
 ]
 
-export let accounts = [
+export const accounts = [
   {
     id: 1,
     email: 'BwMWmaxhbYFsYZTkZ+QabWmXZa2GGlN7/OhvSt7cAjU=',
