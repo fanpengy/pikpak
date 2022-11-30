@@ -114,7 +114,7 @@ instance.interceptors.response.use(response => {
                     window.localStorage.setItem('pikpakLogin', JSON.stringify(res.data))
                   }
                   isLoginLoading = false
-                  window.$message.error('您今日的免费使用次数已达上限，切换账号后请重启')
+                  window.$message.error('您今日的免费使用次数已达上限，切换账号后请刷新')
                   router.push('/list')
                   return false
                 })
