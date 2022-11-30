@@ -40,7 +40,7 @@ jobs:
         run: |
           [ $CF_DOMAIN ] && {
             [ "$CF_DOMAIN" == "DIRECT" ] && sed -i "/\[/,/]/cexport const proxy = []" src/config/index.ts || \
-            sed -i "s/export const proxy = \[/export const proxy = [\n'https://$CF_DOMAIN',"
+            sed -i "s/export const proxy = \[/export const proxy = [\n'https://$CF_DOMAIN'," src/config/index.ts
           }
           [ $BASE_PATH ] || BASE_PATH="/${REPO_NAME}"
           [ "$BASE_PATH" != "/pikpak" ] && sed -i "s|/pikpak|$BASE_PATH|g" vite.config.ts
