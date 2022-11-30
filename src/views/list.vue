@@ -232,7 +232,7 @@
       <n-card style="width: 800px;" title="Aria2选项">
         <template #header-extra>
           <n-space>
-            <n-switch v-model:value="pushOrigin">
+            <n-switch v-model:value="pushOrigin" v-if="aria2Replace">
               <template #checked>
               源
             </template>
@@ -258,7 +258,19 @@
               <n-button type="primary" @click="aria2Post2(aria2Config)">推送</n-button>
             </n-input-group>
           </n-form-item>
-          <n-form-item label="1080P" v-if="aria2Config.command_1080">
+          <n-form-item label="原画" v-if="aria2Config.command_yh_origin">
+            <n-input-group v-if="!pushOrigin">
+              <n-input :value="aria2Config?.command_yh"></n-input>
+              <n-button type="primary" @click="copy(aria2Config?.command_yh)">复制</n-button>
+              <n-button type="primary" @click="aria2Post2(aria2Config, '原画')">推送</n-button>
+            </n-input-group>
+            <n-input-group v-else>
+              <n-input :value="aria2Config?.command_yh_origin"></n-input>
+              <n-button type="primary" @click="copy(aria2Config?.command_yh_origin)">复制</n-button>
+              <n-button type="primary" @click="aria2Post2(aria2Config, '原画')">推送</n-button>
+            </n-input-group>
+          </n-form-item>
+          <n-form-item label="1080P" v-if="aria2Config.command_1080_origin">
             <n-input-group v-if="!pushOrigin">
               <n-input :value="aria2Config?.command_1080"></n-input>
               <n-button type="primary" @click="copy(aria2Config?.command_1080)">复制</n-button>
@@ -270,7 +282,7 @@
               <n-button type="primary" @click="aria2Post2(aria2Config, '1080P')">推送</n-button>
             </n-input-group>
           </n-form-item>
-          <n-form-item label="720P" v-if="aria2Config.command_720">
+          <n-form-item label="720P" v-if="aria2Config.command_720_origin">
             <n-input-group v-if="!pushOrigin">
               <n-input :value="aria2Config?.command_720"></n-input>
               <n-button type="primary" @click="copy(aria2Config?.command_720)">复制</n-button>
@@ -282,7 +294,7 @@
               <n-button type="primary" @click="aria2Post2(aria2Config, '720P')">推送</n-button>
             </n-input-group>
           </n-form-item>
-          <n-form-item label="480P" v-if="aria2Config.command_480">
+          <n-form-item label="480P" v-if="aria2Config.command_480_origin">
             <n-input-group v-if="!pushOrigin">
               <n-input :value="aria2Config?.command_480"></n-input>
               <n-button type="primary" @click="copy(aria2Config?.command_480)">复制</n-button>
@@ -620,7 +632,7 @@ import axios from 'axios';
     initPage()
   })
   const aria2Data = ref()
-  const replaceData = ref()
+  const optimizeData = ref()
   const parentInfo = ref()
   const samllPage = ref(true)
   onMounted(() => {
@@ -637,9 +649,9 @@ import axios from 'axios';
     if(aria2.host) {
       aria2Data.value = aria2
     }
-    let replace = JSON.parse(window.localStorage.getItem('pikpakReplace') || '{}')
-    if(replace.url) {
-      replaceData.value = replace
+    let optimize = JSON.parse(window.localStorage.getItem('pikpakOptimize') || '{}')
+    if(optimize.url) {
+      optimizeData.value = optimize
     }
     initPage()
     window.onbeforeunload = function (e) {
@@ -676,6 +688,7 @@ import axios from 'axios';
   const showCopy = ref(false)
   const showAriaOption = ref(false)
   const pushOrigin = ref(true)
+  const aria2Replace = ref(false)
   const newUrl = ref()
   const taskRef = ref()
   const firstFolder = computed(() => {
@@ -949,9 +962,13 @@ import axios from 'axios';
       })
   }
   const aria2Option = (res:any, dir?:string) => {
-    const replaceDomain  = replaceData.value ? replaceData.value.url : 'dl-a10b-0394.mypikpak.com'
+
+    aria2Replace.value = optimizeData.value?.url
+    const replaceDomain  = optimizeData.value?.url || ''
     let medias = res.data.medias
-    let result = medias ? medias.find((media:any) => media.media_name === '1080P') : undefined
+    let result = medias ? medias.find((media:any) => media.media_name === '原画') : undefined
+    let url_yh = result ? result.link.url : undefined
+    result = medias ? medias.find((media:any) => media.media_name === '1080P') : undefined
     let url_1080 = result ? result.link.url : undefined
     result = medias ? medias.find((media:any) => media.media_name === '720P') : undefined
     let url_720 = result ? result.link.url : undefined
@@ -978,40 +995,59 @@ import axios from 'axios';
       postData.params.splice(0, 0, 'token:' + aria2Data.value.token)
     }
     const curl = "curl http://localhost:16800/jsonrpc -X POST -d 'postdata' --header 'Content-Type: application/json'"
+    if(url_yh) {
+      postData.params[0][0] = url_yh
+      aria2Config.value.command_yh_origin = curl.replace('postdata', JSON.stringify(postData))
+      aria2Config.value.url_yh_origin = url_yh
+      if(aria2Replace.value) {
+        postUrl = url_yh.replace(/dl.*.com/g,replaceDomain)
+        postData.params[0][0] = postUrl
+        aria2Config.value.command_yh = curl.replace('postdata', JSON.stringify(postData))
+        aria2Config.value.url_yh = postUrl
+      }
+    }
     if(url_1080) {
       postData.params[0][0] = url_1080
       aria2Config.value.command_1080_origin = curl.replace('postdata', JSON.stringify(postData))
-      postUrl = url_1080.replace(/dl.*.com/g,replaceDomain)
-      postData.params[0][0] = postUrl
-      aria2Config.value.command_1080 = curl.replace('postdata', JSON.stringify(postData))
-      aria2Config.value.url_1080 = postUrl
       aria2Config.value.url_1080_origin = url_1080
+      if(aria2Replace.value) {
+        postUrl = url_1080.replace(/dl.*.com/g,replaceDomain)
+        postData.params[0][0] = postUrl
+        aria2Config.value.command_1080 = curl.replace('postdata', JSON.stringify(postData))
+        aria2Config.value.url_1080 = postUrl
+      }      
     }
     if(url_720) {
       postData.params[0][0] = url_720
       aria2Config.value.command_720_origin = curl.replace('postdata', JSON.stringify(postData))
-      postUrl = url_720.replace(/dl.*.com/g,replaceDomain)
-      postData.params[0][0] = postUrl
-      aria2Config.value.command_720 = curl.replace('postdata', JSON.stringify(postData))
-      aria2Config.value.url_720 = postUrl
       aria2Config.value.url_720_origin = url_720
+      if(aria2Replace.value) {
+        postUrl = url_720.replace(/dl.*.com/g,replaceDomain)
+        postData.params[0][0] = postUrl
+        aria2Config.value.command_720 = curl.replace('postdata', JSON.stringify(postData))
+        aria2Config.value.url_720 = postUrl
+      }
     }
     if(url_480) {
       postData.params[0][0] = url_480
       aria2Config.value.command_480_origin = curl.replace('postdata', JSON.stringify(postData))
-      postUrl = url_480.replace(/dl.*.com/g,replaceDomain)
-      postData.params[0][0] = postUrl
-      aria2Config.value.command_480 = curl.replace('postdata', JSON.stringify(postData))
-      aria2Config.value.url_480 = postUrl
       aria2Config.value.url_480_origin = url_480
+      if(aria2Replace.value) {
+        postUrl = url_480.replace(/dl.*.com/g,replaceDomain)
+        postData.params[0][0] = postUrl
+        aria2Config.value.command_480 = curl.replace('postdata', JSON.stringify(postData))
+        aria2Config.value.url_480 = postUrl
+      }
     }
     postData.params[0][0] = url
     aria2Config.value.command_origin = curl.replace('postdata', JSON.stringify(postData))
-    postUrl = url.replace(/dl.*.com/g,replaceDomain)
-    postData.params[0][0] = postUrl
-    aria2Config.value.command = curl.replace('postdata', JSON.stringify(postData))
-    aria2Config.value.url = postUrl
     aria2Config.value.url_origin = url
+    if(aria2Replace.value) {
+      postUrl = url.replace(/dl.*.com/g,replaceDomain)
+      postData.params[0][0] = postUrl
+      aria2Config.value.command = curl.replace('postdata', JSON.stringify(postData))
+      aria2Config.value.url = postUrl    
+    }
     aria2Config.value.dir = dir
     aria2Config.value.out = out
     showAriaOption.value = true
@@ -1043,7 +1079,9 @@ import axios from 'axios';
           break
         default:
           if(pushOrigin.value) {
-            url = config.url_origin
+            url = config.url_yh_origin
+          } else {
+            url = config.url_yh
           }
           break
       }

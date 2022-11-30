@@ -3,7 +3,8 @@
 import { onMounted } from '@vue/runtime-core';
   import { GlobalThemeOverrides, NConfigProvider, NMessageProvider, zhCN, dateZhCN, NDialogProvider, NNotificationProvider } from 'naive-ui'
   import MessageContent from './components/MessageContent.vue';
-  import { version, proxy } from './config'
+  import { version, proxy, accounts } from './config'
+  import aes from './utils/aes'
   const themeOverrides = ref<GlobalThemeOverrides>({
     common: {
       primaryColor: '#306eff',
@@ -32,6 +33,16 @@ import { onMounted } from '@vue/runtime-core';
     const isSettingProxy = localStorage.getItem('isSettingProxy')
     if(!isSettingProxy) {
       localStorage.setItem('proxy', JSON.stringify(proxy))
+    }
+
+    const optimise = JSON.parse(localStorage.getItem('pikpakOptimize') || '{}')
+    if(optimise.autoChangeAccount && accounts.length > 0 && !localStorage.getItem('accounts')) {
+      for (let index = 0; index < accounts.length; index++) {
+        const account = accounts[index]
+        account.email = aes.decrypt(account.email, optimise.key)
+        account.password = aes.decrypt(account.password, optimise.key)
+      }
+      localStorage.setItem('accounts', JSON.stringify(accounts))
     }
   })
 </script>

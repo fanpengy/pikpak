@@ -14,4 +14,13 @@ export const proxy = [
   'https://pikpak.yang-s.online',
 ]
 
+export let accounts = [
+  {
+    id: 1,
+    email: 'Awl6nKxiOLpVXsHXVK59Bg==',
+    password: 'Awl6nKxiOLpVXsHXVK59Bg==',
+    used: false
+  }
+]
+
 export const version = '1.25.2'

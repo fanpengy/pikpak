@@ -1,6 +1,6 @@
 <template>
   <div class="list-page">
-    <n-collapse :default-expanded-names="['-1', '0', '2', '3','4']">
+    <n-collapse :default-expanded-names="['-1', '0', '3', '5','6', '7']">
       <n-collapse-item name="-1" >
         <template #header>
           绑定telegram   <a @click.stop="" href="https://www.tjsky.net/?p=220#Telegram" target="_blank"> <n-icon style="vertical-align: middle;" size="20" color="#d03050"><zoom-question></zoom-question></n-icon> </a>
@@ -58,23 +58,45 @@
           </n-form-item>
         </n-form>
       </n-collapse-item>
+      <n-collapse-item name="2" title="加密设置" v-if="optimizeData.autoChangeAccount">
+        <n-form label-width="100px" label-align="left" label-placement="left">
+          <n-form-item label="文本：">
+            <n-input v-model:value="aesData.origin"></n-input>
+          </n-form-item>
+          <n-form-item label="结果：">
+            <div>{{aesData.encrypted}}</div>
+          </n-form-item>
+          <n-form-item>
+            <n-space>
+              <n-button type="primary" @click="tryAes">加密</n-button>
+              <n-button type="primary" @click="copyAndClear" v-if="aesData.encrypted">拷贝</n-button>
+            </n-space>
+          </n-form-item>
+        </n-form>
+      </n-collapse-item>
       <n-collapse-item name="3" title="代理设置">
         <n-input type="textarea" v-model:value="proxyData" rows="4" placeholder="支持多个随机，一行一个，为空则不代理"></n-input>
         <p></p>
         <n-button type="primary" @click="proxyPost">保存设置</n-button>
         <n-text @click="proxyReset">恢复默认</n-text>
       </n-collapse-item>
-      <n-collapse-item name="5" title="替换设置">
+      <n-collapse-item name="4" title="优化设置">
         <n-form label-width="100px" label-align="left" label-placement="left">
-          <n-form-item label="url：">
-            <n-input v-model:value="replaceData.url" placeholder="格式像这样161.117.80.120"></n-input>
+          <n-form-item label="替换域：">
+            <n-input v-model:value="optimizeData.url" placeholder="格式像这样161.117.80.120"></n-input>
+          </n-form-item>
+          <n-form-item label="自动循环：">
+            <n-switch v-model:value="optimizeData.autoChangeAccount"></n-switch>
+          </n-form-item>
+          <n-form-item label="密匙：" v-if="optimizeData.autoChangeAccount">
+            <n-input v-model:value="optimizeData.key"></n-input>
           </n-form-item>
           <n-form-item>
-            <n-button type="primary" @click="saveReplace">保存</n-button>
+            <n-button type="primary" @click="saveOptimize">保存</n-button>
           </n-form-item>
         </n-form>
       </n-collapse-item>
-      <n-collapse-item title="关于" name="2">
+      <n-collapse-item title="关于" name="5">
         <n-space>
           <a href="https://mypikpak.com/" target="_blank" class="n-button">官方网站</a>
           <a href="https://t.me/pikpak_userservice" target="_blank" class="n-button">官方交流群</a>
@@ -84,7 +106,7 @@
         </n-space>
         <br />
       </n-collapse-item>
-       <n-collapse-item title="PC端IDM支持" name="4">
+       <n-collapse-item title="PC端IDM支持" name="6">
         <n-space>
           <a href="https://github.com/MotooriKashin/ef2/releases" target="_blank" class="n-button">地址一：下载支持插件</a>
           <a href="https://url71.ctfile.com/f/21226171-531688310-489b35" target="_blank" class="n-button">地址二：下载支持插件（密码pikpak）</a>
@@ -92,7 +114,7 @@
         </n-space>
         <br />
       </n-collapse-item>
-      <n-collapse-item title="功能列表" name="3">
+      <n-collapse-item title="功能列表" name="7">
         <n-log :lines="logs"></n-log>
       </n-collapse-item>
     </n-collapse>
@@ -101,11 +123,13 @@
 
 <script setup lang="ts">
 import { ref } from '@vue/reactivity';
-import { onMounted } from '@vue/runtime-core';
+import { onMounted, nextTick } from '@vue/runtime-core';
 import http from '../utils/axios'
 import { NForm, NFormItem, NButton, NInput, NCollapse, NCollapseItem, NSpace, NSwitch, useDialog, NAlert, NLog, NIcon } from 'naive-ui'
 import { Browser, ZoomQuestion } from '@vicons/tabler'
 import {proxy as proxyDefault} from '../config'
+import ClipboardJS from 'clipboard'
+import aes from '../utils/aes'
 const logs = ref([
   '手机注册登陆',
   '添加推广下载',
@@ -122,12 +146,37 @@ const aria2Data = ref({
   token: '',
   dir: true
 })
-const replaceData = ref({
-  url: ''
+const optimizeData = ref({
+  url: '',
+  autoChangeAccount: false,
+  key: undefined
+})
+const aesData = ref({
+  origin: '',
+  encrypted: ''
 })
 const isSafari = ref({
   value: false
 })
+const copy = (value:string) => {
+    nextTick(() => {
+      const fakeElement = document.createElement('button')
+      const clipboard = new ClipboardJS(fakeElement, {
+        text: () => value,
+        action: () => 'copy',
+      })
+      clipboard.on('success', (e) => {
+        window.$message.success('复制成功')
+        clipboard.destroy()
+      })
+      clipboard.on('error', (e) => {
+        window.$message.error('复制失败，您可以F12打开控制台手动复制')
+        console.log(e.text)
+        clipboard.destroy()
+      })
+      fakeElement.click()
+    })
+  }
 const testAria2 = () => {
   let postData:any = {
       id:'',
@@ -161,8 +210,30 @@ const saveAria2Direct = () => {
   window.localStorage.setItem('pikpakAria2', JSON.stringify(aria2Data.value))
   window.$message.success('保存成功')
 }
-const saveReplace = () => {
-  window.localStorage.setItem('pikpakReplace', JSON.stringify(replaceData.value))
+const saveOptimize = () => {
+  if(!optimizeData.value.autoChangeAccount) {
+    optimizeData.value.key = undefined
+  } 
+  if (optimizeData.value.autoChangeAccount && !optimizeData.value.key) {
+    window.$message.error('保存失败，请填写密匙！')
+  } else {
+    window.localStorage.setItem('pikpakOptimize', JSON.stringify(optimizeData.value))
+    window.$message.success('保存成功')
+  }
+}
+const tryAes = () => {
+  if(aesData.value.origin) {
+    aesData.value.encrypted = aes.encrypt(aesData.value.origin, optimizeData.value.key)
+  } else {
+    window.$message.error('请填写内容')
+  }
+}
+const copyAndClear = () => {
+  copy(aesData.value.encrypted)
+  aesData.value = {
+    origin: '',
+    encrypted: ''
+  }
 }
 const loginSwitch = ref(false)
 const loginData = ref({
@@ -200,9 +271,8 @@ const proxyReset = () => {
 }
 onMounted(() => {
   let aria2 = JSON.parse(window.localStorage.getItem('pikpakAria2') || '{}')
-  let replace = JSON.parse(window.localStorage.getItem('pikpakReplace') || '{}')
+  let optimize = JSON.parse(window.localStorage.getItem('pikpakOptimize') || '{}')
   var userAgent = navigator.userAgent
-  console.log(userAgent)
   if (userAgent.indexOf("Safari") > -1 && userAgent.indexOf("Macintosh") > -1 && userAgent.indexOf("Edg") === -1 && userAgent.indexOf("Chromme") === -1) {
     isSafari.value.value = true
   }
@@ -212,8 +282,8 @@ onMounted(() => {
   if(aria2.host) {
     aria2Data.value = aria2
   }
-  if(replace.url) {
-    replaceData.value = replace
+  if(optimize.url || optimize.autoChangeAccount || optimize.key) {
+    optimizeData.value = optimize
   }
   let login = JSON.parse(window.localStorage.getItem('pikpakLoginData') || '{}')
   if(login.username && login.password) {
