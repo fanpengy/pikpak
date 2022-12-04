@@ -174,5 +174,8 @@ instance2.interceptors.request.use(request => {
   return request
 })
 
+const instance3 = axios.create({})
+
 export const notionHttp = instance2
+export const sqlClient = instance3
 export default instance

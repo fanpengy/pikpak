@@ -13,7 +13,8 @@ export default defineConfig(({mode}) => {
           target: 'https://api.notion.com',
           changeOrigin: true,
         }
-      }
+      },
+      https: true
     }
   }
 })

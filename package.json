@@ -9,8 +9,13 @@
   "dependencies": {
     "axios": "^0.23.0",
     "clipboard": "^2.0.8",
+    "cors": "^2.8.5",
     "dplayer": "^1.26.0",
     "element-resize-detector": "^1.2.3",
+    "express": "^4.18.2",
+    "fs": "^0.0.1-security",
+    "https": "^1.0.0",
+    "mysql": "^2.18.1",
     "plyr": "^3.6.9",
     "qs": "^6.10.1",
     "streamsaver": "^2.0.5",
