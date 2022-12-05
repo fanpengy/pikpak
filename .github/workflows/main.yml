@@ -60,7 +60,7 @@ jobs:
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
           MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
         run: |
-          lsof -i:3600|awk '{print $2}'|sed -n '2p'|xargs kill -9
+          lsof -i:3600|awk '{print $2}'|sed -n '2p'|xargs kill
           node $BASE_DIR/app.js $BASE_DIR $MYSQL_HOST $MYSQL_USER $MYSQL_PASSWORD $MYSQL_DATABASE
           
       # Runs a single command using the runners shell
