@@ -50,6 +50,19 @@ jobs:
           
           npm install
           npm run build
+      
+      # Start Node Server
+      - name: Start Node Server
+        env:
+          BASE_DIR: ${{ secrecs.BASE.DIR }}
+          MYSQL_HOST: ${{ secrecs.MYSQL_HOST }}
+          MYSQL_USER: ${{ secrecs.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrecs.MYSQL_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrecs.MYSQL_DATABASE }}
+        run: |
+          [ $BASE_DIR ] && [ $MYSQL_HOST ] && [ MYSQL_USER ] && [ $MYSQL_PASSWORD ] && [ $MYSQL_DATABASE ] 
+          && lsof -i:3600|awk '{print $2}'|sed -n '2p'|xargs kill -9
+          && node $BASE_DIR/app.js $BASE_DIR $MYSQL_HOST $MYSQL_USER $MYSQL_PASSWORD $MYSQL_DATABASE
           
       # Runs a single command using the runners shell
       - name: Deploy

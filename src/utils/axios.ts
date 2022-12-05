@@ -1,5 +1,7 @@
 import axios from 'axios'
 import router from '../router/index'
+import accountApi from '../api/accountApi'
+import aes from './aes'
 
 const instance = axios.create({})
 
@@ -9,7 +11,7 @@ instance.interceptors.request.use(request => {
   if (pikpakLogin.access_token) {
     request.headers['Authorization'] = `${pikpakLogin.token_type || 'Bearer'} ${pikpakLogin.access_token}`
   }
-  if(request.url?.indexOf('https://', 4) === -1) {
+  if(request.url?.indexOf('https://', 4) === -1 && request.url?.indexOf('localhost') === -1) {
     const proxyArray = JSON.parse(window.localStorage.getItem('proxy') || '[]')
     if (proxyArray.length > 0) {
       const index = Math.floor((Math.random() * proxyArray.length))
@@ -70,81 +72,74 @@ instance.interceptors.response.use(response => {
       case 403:
         if(response?.data?.error === 'task_daily_create_limit') {
           const login = JSON.parse(window.localStorage.getItem('pikpakLogin') || '{}')
-          const accountId = login.id ? login.id : -1
-          const accountsData = window.localStorage.getItem('accounts')
-          var accounts = accountsData ? JSON.parse(accountsData) : []
-          let accountUseful = false
-          accounts = accounts.map((account:any) => {
-            if(account.id === accountId) {
-              account.used = true
-              account.blockTime = new Date().getTime
-            }
-            return account
-          })
-          if(accounts.every((account:any) => account.used)) {
-            // no useful account, try to revert
-            const now = new Date()
-            now.setHours(0,0,0,0)
-            const todayStart = now.getTime()
-            accounts = accounts.map((account:any) => {
-              if(account.blockTime && account.blockTime < todayStart) {
-                account.blockTime = undefined
-                account.used = false
-              }
-              return account
-            })
-          }
-          const account = accounts.find((account:any) => !account.used)
-          if(account) {
-            if(!isLoginLoading) {
-              const loginDataJson = {
-                username: account.email,
-                password: account.password
-              }
-              isLoginLoading = true
-              return instance.post('https://user.mypikpak.com/v1/auth/signin', {
-                "captcha_token": "",
-                "client_id": "YNxT9w7GMdWvEOKa",
-                "client_secret": "dbw2OtmVEeuUvIptb1Coyg",
-                ...loginDataJson
-              })
-                .then((res:any) => {
-                  if(res.data && res.data.access_token) {
-                    res.data.id = account.id
-                    window.localStorage.setItem('pikpakLogin', JSON.stringify(res.data))
-                  }
-                  isLoginLoading = false
-                  window.$message.error('您今日的免费使用次数已达上限，切换账号后请刷新')
-                  router.push('/list')
-                  return false
+          const optimise = JSON.parse(localStorage.getItem('pikpakOptimize') || '{}')
+          if(optimise.autoChangeAccount) {
+            const accountId = login.id ? login.id : -1
+            if(accountId > -1) {
+              accountApi.used(accountId)
+                .catch(err => {
+                  console.error(err)
                 })
-                .catch(() => {
+            }
+            accountApi.query()
+              .then((res:any) => { 
+                if(res.data.length <=0 ) {
+                  // no useful account
+                  window.$message.error('没有可用账号，即将跳转到登陆')
                   window.localStorage.removeItem('pikpakLogin')
+                  window.localStorage.removeItem('pikpakLoginData')
                   router.push('/login')
-                  return false
-                }).finally(() => {
-                  window.localStorage.setItem('accounts', JSON.stringify(accounts))
-                })
-            } else {
-              return new Promise((resolve, reject) => {
-                const s = setInterval(() => {
+                } else {
+                  const account = res.data[0]
                   if(!isLoginLoading) {
-                    clearInterval(s)
-                    //resolve(instance(config))
-                    window.localStorage.setItem('accounts', JSON.stringify(accounts))
-                    router.push('/list')
-                    return false
+                    const email = aes.decrypt(account.email, optimise.key)
+                    const password = aes.decrypt(account.password, optimise.key)
+                    const loginDataJson = {
+                      username: email,
+                      password: password
+                    }
+                    console.debug(loginDataJson)
+                    isLoginLoading = true
+                    return instance.post('https://user.mypikpak.com/v1/auth/signin', {
+                      "captcha_token": "",
+                      "client_id": "YNxT9w7GMdWvEOKa",
+                      "client_secret": "dbw2OtmVEeuUvIptb1Coyg",
+                      ...loginDataJson
+                    })
+                      .then((res:any) => {
+                        if(res.data && res.data.access_token) {
+                          res.data.id = account.id
+                          window.localStorage.setItem('pikpakLogin', JSON.stringify(res.data))
+                        }
+                        isLoginLoading = false
+                        window.$message.error('您今日的免费使用次数已达上限，切换账号后请刷新')
+                        router.push('/list')
+                        return false
+                      })
+                      .catch(() => {
+                        //window.localStorage.removeItem('pikpakLogin')
+                        //router.push('/login')
+                        window.$message.error('自动切换账号失败，请重试或手动切换')
+                        return false
+                      })
+                  } else {
+                    return new Promise((resolve, reject) => {
+                      const s = setInterval(() => {
+                        if(!isLoginLoading) {
+                          clearInterval(s)
+                          //resolve(instance(config))
+                          router.push('/list')
+                          return false
+                        }
+                      }, 100)
+                    })
                   }
-                }, 100)
+                }
               })
-            }
-          } else {
-            // no useful account
-            window.$message.error(response?.data?.error_description || '出错了')
-            window.localStorage.setItem('accounts', JSON.stringify(accounts))
-            window.localStorage.removeItem('pikpakLogin')
-            window.localStorage.removeItem('pikpakLoginData')
-            router.push('/login')
+              .catch( err => {
+                console.log(err)
+                window.$message.error('查询账号异常，请重试')
+              })
           }
         } else {
           window.$message.error(response?.data?.error_description || '出错了')
