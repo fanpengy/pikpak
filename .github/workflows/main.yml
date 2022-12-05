@@ -50,22 +50,6 @@ jobs:
           
           npm install
           npm run build
-      
-      # Start Node Server
-      - name: Start Node Server
-        env:
-          BASE_DIR: ${{ secrets.BASE_DIR }}
-          MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
-          MYSQL_USER: ${{ secrets.MYSQL_USER }}
-          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
-        run: |
-          # lsof -i:3600|awk '{print $2}'|sed -n '2p'|xargs kill
-          pid=`lsof -i:3600|awk '{print $2}'|sed -n '2p'`
-          echo $pid
-          [ $pid ] && kill -9 $pid
-          # nohup node $BASE_DIR/app.js $BASE_DIR $MYSQL_HOST $MYSQL_USER $MYSQL_PASSWORD $MYSQL_DATABASE > /dev/null 2>&1 &
-          node $BASE_DIR/app.js $BASE_DIR $MYSQL_HOST $MYSQL_USER $MYSQL_PASSWORD $MYSQL_DATABASE
           
       # Runs a single command using the runners shell
       - name: Deploy
