@@ -19,6 +19,6 @@ app.use(accountService)
 
 const httpsServer = https.createServer(options, app)
 
-httpsServer.listen(3600, () => {
+httpsServer.listen(80, () => {
     console.log('服务器启动成功');
 })
