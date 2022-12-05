@@ -63,7 +63,7 @@ jobs:
           # lsof -i:3600|awk '{print $2}'|sed -n '2p'|xargs kill
           pid = `lsof -i:3600|awk '{print $2}'|sed -n '2p'`
           echo $pid
-          [ $pid ] && kill -9 pid
+          [ $pid ] && kill -9 $pid
           node $BASE_DIR/app.js $BASE_DIR $MYSQL_HOST $MYSQL_USER $MYSQL_PASSWORD $MYSQL_DATABASE
           
       # Runs a single command using the runners shell
