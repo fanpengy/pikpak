@@ -1,15 +1,15 @@
-import http from '../utils/axios'
+import { sqlClient } from '../utils/axios'
 
 const accountApi = {
     query: () => {
-        return http.get('https://localhost:3600/get')
+        return sqlClient.get('http://localhost:3000/api/account_get')
     },
     queryAll: () => {
-        return http.get('https://localhost:3600/accounts')
+        return sqlClient.get('https://localhost:3000/api/accounts')
     },
 
     used: (id:any) => {
-        return http.post('https://localhost:3600/account/used', {
+        return sqlClient.post('http://localhost:3000/api/account_used', {
             id: id
         })
     }

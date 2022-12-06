@@ -11,7 +11,7 @@ instance.interceptors.request.use(request => {
   if (pikpakLogin.access_token) {
     request.headers['Authorization'] = `${pikpakLogin.token_type || 'Bearer'} ${pikpakLogin.access_token}`
   }
-  if(request.url?.indexOf('https://', 4) === -1 && request.url?.indexOf('localhost') === -1) {
+  if(request.url?.indexOf('https://', 4) === -1) {
     const proxyArray = JSON.parse(window.localStorage.getItem('proxy') || '[]')
     if (proxyArray.length > 0) {
       const index = Math.floor((Math.random() * proxyArray.length))
@@ -170,6 +170,22 @@ instance2.interceptors.request.use(request => {
 })
 
 const instance3 = axios.create({})
+instance3.interceptors.request.use(request => {
+  var url = request.url
+  console.log('url',url)
+  if(url && !url?.startsWith('http://localhost:3000')) {
+    const optimise = JSON.parse(localStorage.getItem('pikpakOptimize') || '{}')
+    if(optimise.autoChangeAccount) {
+      //https://encryptuyhasiuhsiusdecrypt/api/account_get
+      var start = url.indexOf('encrypt') + 7
+      var end = url.indexOf('decrypt')
+      var encrypted = url?.substring(start, end)
+      var domain = aes.decrypt(encrypted, optimise.key)
+      request.url = 'https://' + domain + url.substring(end + 7)
+    }
+  }
+  return request
+})
 
 export const notionHttp = instance2
 export const sqlClient = instance3

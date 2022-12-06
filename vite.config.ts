@@ -8,13 +8,13 @@ export default defineConfig(({mode}) => {
     base: mode === 'development' ? '' : '/pikpak',
     plugins: [vue()],
     server: {
+      port: 3600,
       proxy: {
         '/v1/pages': {
           target: 'https://api.notion.com',
           changeOrigin: true,
         }
-      },
-      https: true
+      }
     }
   }
 })
