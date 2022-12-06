@@ -48,7 +48,7 @@ jobs:
           [ $INVITE_CODE ] && sed -i "s|apk/url/225815|apk/url/$INVITE_CODE|g" src/views/login.vue
           [ $CF_INVITE ] && sed -i "s/invite.z7.workers.dev/$CF_INVITE/g" src/views/register.vue src/views/sms.vue src/views/testtest.vue
           [ $CNAME_DOMAIN ] && echo "$CNAME_DOMAIN" > public/CNAME
-          [ $MYSQL_SERVER ] && sed -i "s|http://localhost:3000|https://encrypt$MYSQL_SERVERdecrypt|g" src/api/*Api.ts
+          [ $MYSQL_SERVER ] && sed -i "s|http://localhost:3000|https://encrypt${MYSQL_SERVER}decrypt|g" src/api/*Api.ts
           
           npm install
           npm run build
