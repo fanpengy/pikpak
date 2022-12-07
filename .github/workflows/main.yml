@@ -37,7 +37,7 @@ jobs:
           INVITE_CODE: ${{ secrets.INVITE_CODE }} # APK邀请码
           CF_INVITE: ${{ secrets.CF_INVITE }} # CF-Workers邀请域名
           CNAME_DOMAIN: ${{ secrets.CNAME_DOMAIN }} # CNAME域名
-          MYSQL_SERVER: ${{ secrets.MYSQL_SERVER }}
+          # MYSQL_SERVER: ${{ secrets.MYSQL_SERVER }}
         run: |
           [ $CF_DOMAIN ] && {
             [ "$CF_DOMAIN" == "DIRECT" ] && sed -i "/\[/,/]/cexport const proxy = []" src/config/index.ts || \
@@ -48,7 +48,8 @@ jobs:
           [ $INVITE_CODE ] && sed -i "s|apk/url/225815|apk/url/$INVITE_CODE|g" src/views/login.vue
           [ $CF_INVITE ] && sed -i "s/invite.z7.workers.dev/$CF_INVITE/g" src/views/register.vue src/views/sms.vue src/views/testtest.vue
           [ $CNAME_DOMAIN ] && echo "$CNAME_DOMAIN" > public/CNAME
-          [ $MYSQL_SERVER ] && sed -i "s|http://localhost:3000|https://encrypt${MYSQL_SERVER}decrypt|g" src/api/*Api.ts
+
+        # [ $MYSQL_SERVER ] && sed -i "s|http://localhost:3000|https://encrypt${MYSQL_SERVER}decrypt|g" src/api/*Api.ts
           
           npm install
           npm run build

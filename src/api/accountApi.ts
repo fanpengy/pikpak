@@ -2,14 +2,14 @@ import { sqlClient } from '../utils/axios'
 
 const accountApi = {
     query: () => {
-        return sqlClient.get('http://localhost:3000/api/account_get')
+        return sqlClient.get('https://localhost:3600/account/get')
     },
     queryAll: () => {
-        return sqlClient.get('https://localhost:3000/api/accounts')
+        return sqlClient.get('https://localhost:3600/accounts')
     },
 
     used: (id:any) => {
-        return sqlClient.post('http://localhost:3000/api/account_used', {
+        return sqlClient.post('https://localhost:3600/account_/used', {
             id: id
         })
     }
