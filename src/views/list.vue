@@ -22,6 +22,9 @@
           <n-button  @click="showUserMenu = true">
             添加自定义菜单
           </n-button>
+          <n-button  @click="getFileList">
+            刷新列表
+          </n-button>
           <n-icon :color="themeVars.primaryColor"  @click="showAddUrl = true">
             <circle-plus></circle-plus>
           </n-icon>
@@ -994,7 +997,8 @@ import axios from 'axios';
     if(aria2Data.value.token) {
       postData.params.splice(0, 0, 'token:' + aria2Data.value.token)
     }
-    const curl = "curl http://localhost:16800/jsonrpc -X POST -d 'postdata' --header 'Content-Type: application/json'"
+    const curl_origin = "curl aria2host -X POST -d 'postdata' --header 'Content-Type: application/json'"
+    const curl = curl_origin.replace('aria2host', aria2Data.value.host)
     if(url_yh) {
       postData.params[0][0] = url_yh
       aria2Config.value.command_yh_origin = curl.replace('postdata', JSON.stringify(postData))

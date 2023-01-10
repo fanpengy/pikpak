@@ -17,7 +17,7 @@
       </a>
       <n-menu :options="menuOptions" :value="String(route.name)" @update:value="goRoute"></n-menu>
       <div class="content-bottom" v-if="!collapsed">
-        {{byteConvert(aboutInfo?.quota.usage)}} / {{byteConvert(aboutInfo?.quota.limit)}} <n-text type="primary" @click="showCode = true">会员码</n-text>
+        {{byteConvert(aboutInfo?.quota.usage)}} / {{byteConvert(aboutInfo?.quota.limit)}} <n-text type="primary" @click="showCode = true">会员码</n-text> <n-icon @click="getInfo"><refresh/></n-icon>
         <n-progress 
           v-if="aboutInfo?.quota"
           type="line"
@@ -86,7 +86,7 @@
 import { ref } from '@vue/reactivity';
 import { h, onMounted, watch } from '@vue/runtime-core';
 import { NLayout, NLayoutSider, NLayoutContent, NMenu, MenuOption, NIcon, NProgress, NText, NModal, NCard, NInput, NButton, NScrollbar, NTime, NTooltip, useDialog } from 'naive-ui'
-import { File, Trash, CircleX, Logout, Settings, Share, Copy, Video, Camera } from '@vicons/tabler'
+import { File, Trash, CircleX, Logout, Settings, Share, Copy, Video, Camera, Refresh } from '@vicons/tabler'
 import http from '../../utils/axios'
 import { byteConvert } from '../../utils'
 import { useRoute, useRouter } from 'vue-router'
@@ -170,6 +170,10 @@ import { useRoute, useRouter } from 'vue-router'
     getAbout()
     getVip()
   })
+  const getInfo = () => {
+    getUserInfo()
+    getAbout()
+  }
   const code = ref()
   const showCode = ref(false)
   const postCode = () => {

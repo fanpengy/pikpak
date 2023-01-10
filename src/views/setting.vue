@@ -91,6 +91,9 @@
           <n-form-item label="密匙：" v-if="optimizeData.autoChangeAccount">
             <n-input v-model:value="optimizeData.key"></n-input>
           </n-form-item>
+          <n-form-item label="密匙：" v-if="optimizeData.autoChangeAccount">
+            <n-input v-model:value="optimizeData.host"></n-input>
+          </n-form-item>
           <n-form-item>
             <n-button type="primary" @click="saveOptimize">保存</n-button>
           </n-form-item>
@@ -149,7 +152,8 @@ const aria2Data = ref({
 const optimizeData = ref({
   url: '',
   autoChangeAccount: false,
-  key: undefined
+  key: undefined,
+  host: ''
 })
 const aesData = ref({
   origin: '',

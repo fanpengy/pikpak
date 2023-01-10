@@ -183,6 +183,11 @@ instance3.interceptors.request.use(request => {
       var domain = aes.decrypt(encrypted, optimise.key)
       request.url = 'https://' + domain + url.substring(end + 7)
     }
+  } else {
+    const optimise = JSON.parse(localStorage.getItem('pikpakOptimize') || '{}')
+    if(optimise.autoChangeAccount) {
+      request.url = request.url?.replace("localhost",optimise.host)
+    }
   }
   return request
 })
