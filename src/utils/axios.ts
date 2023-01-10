@@ -173,7 +173,7 @@ const instance3 = axios.create({})
 instance3.interceptors.request.use(request => {
   var url = request.url
   console.log('url',url)
-  if(url && !url?.startsWith('https://localhost:3600')) {
+  if(url && !url?.startsWith('https://localhost:8081')) {
     const optimise = JSON.parse(localStorage.getItem('pikpakOptimize') || '{}')
     if(optimise.autoChangeAccount) {
       //https://encryptuyhasiuhsiusdecrypt/api/account_get
