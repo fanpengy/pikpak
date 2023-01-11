@@ -254,11 +254,13 @@
               <n-input :value="aria2Config?.command"></n-input>
               <n-button type="primary" @click="copy(aria2Config?.command)">复制</n-button>
               <n-button type="primary" @click="aria2Post2(aria2Config)">推送</n-button>
+              <n-button type="primary" @click="aria2Post3(aria2Config.url, aria2Config.out, aria2Config.dir)">推送2</n-button>
             </n-input-group>
             <n-input-group v-else>
               <n-input :value="aria2Config?.command_origin"></n-input>
               <n-button type="primary" @click="copy(aria2Config?.command_origin)">复制</n-button>
               <n-button type="primary" @click="aria2Post2(aria2Config)">推送</n-button>
+              <n-button type="primary" @click="aria2Post3(aria2Config.url_origin, aria2Config.out, aria2Config.dir)">推送2</n-button>
             </n-input-group>
           </n-form-item>
           <n-form-item label="原画" v-if="aria2Config.command_yh_origin">
@@ -266,11 +268,13 @@
               <n-input :value="aria2Config?.command_yh"></n-input>
               <n-button type="primary" @click="copy(aria2Config?.command_yh)">复制</n-button>
               <n-button type="primary" @click="aria2Post2(aria2Config, '原画')">推送</n-button>
+              <n-button type="primary" @click="aria2Post3(aria2Config.url_yh, aria2Config.out, aria2Config.dir)">推送2</n-button>
             </n-input-group>
             <n-input-group v-else>
               <n-input :value="aria2Config?.command_yh_origin"></n-input>
               <n-button type="primary" @click="copy(aria2Config?.command_yh_origin)">复制</n-button>
               <n-button type="primary" @click="aria2Post2(aria2Config, '原画')">推送</n-button>
+              <n-button type="primary" @click="aria2Post3(aria2Config.url_yh_origin, aria2Config.out, aria2Config.dir)">推送2</n-button>
             </n-input-group>
           </n-form-item>
           <n-form-item label="1080P" v-if="aria2Config.command_1080_origin">
@@ -278,11 +282,13 @@
               <n-input :value="aria2Config?.command_1080"></n-input>
               <n-button type="primary" @click="copy(aria2Config?.command_1080)">复制</n-button>
               <n-button type="primary" @click="aria2Post2(aria2Config, '1080P')">推送</n-button>
+              <n-button type="primary" @click="aria2Post3(aria2Config.url_1080, aria2Config.out, aria2Config.dir)">推送2</n-button>
             </n-input-group>
             <n-input-group v-else>
               <n-input :value="aria2Config?.command_1080_origin"></n-input>
               <n-button type="primary" @click="copy(aria2Config?.command_1080_origin)">复制</n-button>
               <n-button type="primary" @click="aria2Post2(aria2Config, '1080P')">推送</n-button>
+              <n-button type="primary" @click="aria2Post3(aria2Config.url_1080_origin, aria2Config.out, aria2Config.dir)">推送2</n-button>
             </n-input-group>
           </n-form-item>
           <n-form-item label="720P" v-if="aria2Config.command_720_origin">
@@ -290,11 +296,13 @@
               <n-input :value="aria2Config?.command_720"></n-input>
               <n-button type="primary" @click="copy(aria2Config?.command_720)">复制</n-button>
               <n-button type="primary" @click="aria2Post2(aria2Config, '720P')">推送</n-button>
+              <n-button type="primary" @click="aria2Post3(aria2Config.url_720, aria2Config.out, aria2Config.dir)">推送2</n-button>
             </n-input-group>
             <n-input-group v-else>
               <n-input :value="aria2Config?.command_720_origin"></n-input>
               <n-button type="primary" @click="copy(aria2Config?.command_720_origin)">复制</n-button>
               <n-button type="primary" @click="aria2Post2(aria2Config, '720P')">推送</n-button>
+              <n-button type="primary" @click="aria2Post3(aria2Config.url_720_origin, aria2Config.out, aria2Config.dir)">推送2</n-button>
             </n-input-group>
           </n-form-item>
           <n-form-item label="480P" v-if="aria2Config.command_480_origin">
@@ -302,11 +310,13 @@
               <n-input :value="aria2Config?.command_480"></n-input>
               <n-button type="primary" @click="copy(aria2Config?.command_480)">复制</n-button>
               <n-button type="primary" @click="aria2Post2(aria2Config, '480P')">推送</n-button>
+              <n-button type="primary" @click="aria2Post3(aria2Config.url_480, aria2Config.out, aria2Config.dir)">推送2</n-button>
             </n-input-group>
             <n-input-group v-else>
               <n-input :value="aria2Config?.command_480_origin"></n-input>
               <n-button type="primary" @click="copy(aria2Config?.command_480_origin)">复制</n-button>
               <n-button type="primary" @click="aria2Post2(aria2Config, '480P')">推送</n-button>
+              <n-button type="primary" @click="aria2Post3(aria2Config.url_480_origin, aria2Config.out, aria2Config.dir)">推送2</n-button>
             </n-input-group>
           </n-form-item>
         </n-form>
@@ -344,6 +354,7 @@ import TaskVue from '../components/Task.vue'
 import ClipboardJS from 'clipboard'
 import streamSaver from 'streamsaver'
 import { DropdownMixedOption } from 'naive-ui/lib/dropdown/src/interface'
+import aria2Api from '../api/aria2Api';
 import axios from 'axios';
   const filesList = ref()
   const route = useRoute()
@@ -980,6 +991,7 @@ import axios from 'axios';
     let url = res.data.web_content_link
     let postUrl = ''
     const out = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00').replace(/.mp4/g, 's.mp4')
+    const out_h264 = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00')
     let postData:any = {
         id:'',
         jsonrpc:'2.0',
@@ -1054,10 +1066,26 @@ import axios from 'axios';
     }
     aria2Config.value.dir = dir
     aria2Config.value.out = out
+    aria2Config.value.out_h264 = out_h264
     showAriaOption.value = true
+  }
+  const aria2Post3 = (url:string, name:string, dir?:string) => {
+
+    aria2Api.push(url, name, aria2Data.value.host)
+      .then((res:any) => {
+        window.$message.success('推送成功! Yep!')
+      })
+      .catch( err => {
+        console.log(err)
+        window.$message.error('查询账号异常，请重试')
+      })
   }
   const aria2Post2 = (config:any, type?: string, dir?:string) => {
     let url = config.url
+    let out = config.out
+    if(pushOrigin.value) {
+      out = config.out_h264
+    }
     if(type) {
       switch (type) {
         case '1080P':
@@ -1101,7 +1129,7 @@ import axios from 'axios';
         params:[
             [url],
             {
-              out: config.out
+              out: out
             }
         ]
     }

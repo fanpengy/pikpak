@@ -91,7 +91,7 @@
           <n-form-item label="密匙：" v-if="optimizeData.autoChangeAccount">
             <n-input v-model:value="optimizeData.key"></n-input>
           </n-form-item>
-          <n-form-item label="密匙：" v-if="optimizeData.autoChangeAccount">
+          <n-form-item label="服务：" v-if="optimizeData.autoChangeAccount">
             <n-input v-model:value="optimizeData.host"></n-input>
           </n-form-item>
           <n-form-item>
