@@ -37,10 +37,14 @@ jobs:
           INVITE_CODE: ${{ secrets.INVITE_CODE }} # APK邀请码
           CF_INVITE: ${{ secrets.CF_INVITE }} # CF-Workers邀请域名
           CNAME_DOMAIN: ${{ secrets.CNAME_DOMAIN }} # CNAME域名
+          ACCOUNT_SERVER: ${{ secrets.ACCOUNT_SERVER }}
         run: |
           [ $CF_DOMAIN ] && {
             [ "$CF_DOMAIN" == "DIRECT" ] && sed -i "/\[/,/]/cexport const proxy = []" src/config/index.ts || \
             sed -i "s|export const proxy = \[|export const proxy = [\n'https://$CF_DOMAIN',|g" src/config/index.ts
+          }
+          [ $ACCOUNT_SERVER ] && {
+            sed -i "s|localhost:3000|$ACCOUNT_SERVER|g" src/api/accountApi.ts
           }
           [ $BASE_PATH ] || BASE_PATH="/${REPO_NAME}"
           [ "$BASE_PATH" != "/pikpak" ] && sed -i "s|/pikpak|$BASE_PATH|g" vite.config.ts

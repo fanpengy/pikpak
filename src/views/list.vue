@@ -38,6 +38,7 @@
       </div>
     </n-scrollbar>
     <task-vue ref="taskRef"></task-vue>
+    <Aria2Task></Aria2Task>
     <div class="outer-wrapper static show" v-if="checkedRowKeys.length">
       <div class="toolbar-wrapper">
         <div class="toolbar-item" @click="batchCopyAll">
@@ -235,13 +236,14 @@
       <n-card style="width: 800px;" title="Aria2选项">
         <template #header-extra>
           <n-space>
-            <n-switch v-model:value="pushOrigin" v-if="aria2Replace">
-              <template #checked>
-              源
-            </template>
-            <template #unchecked>
-              替换
-            </template>
+            <span v-if="aria2Replace.replace">替换链接</span>
+            <n-switch v-model:value="pushReplace" v-if="aria2Replace.replace">
+              <!-- <template #checked>
+                替
+              </template>
+              <template #unchecked>
+                源
+              </template> -->
             </n-switch>
             <n-icon @click="showAriaOption = false">
               <circle-x></circle-x>
@@ -249,76 +251,14 @@
           </n-space>
         </template>
         <n-form label-width="40px" label-align="left" label-placement="left">
-          <n-form-item label="链接">
-            <n-input-group v-if="!pushOrigin">
-              <n-input :value="aria2Config?.command"></n-input>
-              <n-button type="primary" @click="copy(aria2Config?.command)">复制</n-button>
-              <n-button type="primary" @click="aria2Post2(aria2Config)">推送</n-button>
-              <n-button type="primary" @click="aria2Post3(aria2Config.url, aria2Config.out, aria2Config.dir)">推送2</n-button>
-            </n-input-group>
-            <n-input-group v-else>
-              <n-input :value="aria2Config?.command_origin"></n-input>
-              <n-button type="primary" @click="copy(aria2Config?.command_origin)">复制</n-button>
-              <n-button type="primary" @click="aria2Post2(aria2Config)">推送</n-button>
-              <n-button type="primary" @click="aria2Post3(aria2Config.url_origin, aria2Config.out, aria2Config.dir)">推送2</n-button>
-            </n-input-group>
-          </n-form-item>
-          <n-form-item label="原画" v-if="aria2Config.command_yh_origin">
-            <n-input-group v-if="!pushOrigin">
-              <n-input :value="aria2Config?.command_yh"></n-input>
-              <n-button type="primary" @click="copy(aria2Config?.command_yh)">复制</n-button>
-              <n-button type="primary" @click="aria2Post2(aria2Config, '原画')">推送</n-button>
-              <n-button type="primary" @click="aria2Post3(aria2Config.url_yh, aria2Config.out, aria2Config.dir)">推送2</n-button>
-            </n-input-group>
-            <n-input-group v-else>
-              <n-input :value="aria2Config?.command_yh_origin"></n-input>
-              <n-button type="primary" @click="copy(aria2Config?.command_yh_origin)">复制</n-button>
-              <n-button type="primary" @click="aria2Post2(aria2Config, '原画')">推送</n-button>
-              <n-button type="primary" @click="aria2Post3(aria2Config.url_yh_origin, aria2Config.out, aria2Config.dir)">推送2</n-button>
-            </n-input-group>
-          </n-form-item>
-          <n-form-item label="1080P" v-if="aria2Config.command_1080_origin">
-            <n-input-group v-if="!pushOrigin">
-              <n-input :value="aria2Config?.command_1080"></n-input>
-              <n-button type="primary" @click="copy(aria2Config?.command_1080)">复制</n-button>
-              <n-button type="primary" @click="aria2Post2(aria2Config, '1080P')">推送</n-button>
-              <n-button type="primary" @click="aria2Post3(aria2Config.url_1080, aria2Config.out, aria2Config.dir)">推送2</n-button>
-            </n-input-group>
-            <n-input-group v-else>
-              <n-input :value="aria2Config?.command_1080_origin"></n-input>
-              <n-button type="primary" @click="copy(aria2Config?.command_1080_origin)">复制</n-button>
-              <n-button type="primary" @click="aria2Post2(aria2Config, '1080P')">推送</n-button>
-              <n-button type="primary" @click="aria2Post3(aria2Config.url_1080_origin, aria2Config.out, aria2Config.dir)">推送2</n-button>
-            </n-input-group>
-          </n-form-item>
-          <n-form-item label="720P" v-if="aria2Config.command_720_origin">
-            <n-input-group v-if="!pushOrigin">
-              <n-input :value="aria2Config?.command_720"></n-input>
-              <n-button type="primary" @click="copy(aria2Config?.command_720)">复制</n-button>
-              <n-button type="primary" @click="aria2Post2(aria2Config, '720P')">推送</n-button>
-              <n-button type="primary" @click="aria2Post3(aria2Config.url_720, aria2Config.out, aria2Config.dir)">推送2</n-button>
-            </n-input-group>
-            <n-input-group v-else>
-              <n-input :value="aria2Config?.command_720_origin"></n-input>
-              <n-button type="primary" @click="copy(aria2Config?.command_720_origin)">复制</n-button>
-              <n-button type="primary" @click="aria2Post2(aria2Config, '720P')">推送</n-button>
-              <n-button type="primary" @click="aria2Post3(aria2Config.url_720_origin, aria2Config.out, aria2Config.dir)">推送2</n-button>
-            </n-input-group>
-          </n-form-item>
-          <n-form-item label="480P" v-if="aria2Config.command_480_origin">
-            <n-input-group v-if="!pushOrigin">
-              <n-input :value="aria2Config?.command_480"></n-input>
-              <n-button type="primary" @click="copy(aria2Config?.command_480)">复制</n-button>
-              <n-button type="primary" @click="aria2Post2(aria2Config, '480P')">推送</n-button>
-              <n-button type="primary" @click="aria2Post3(aria2Config.url_480, aria2Config.out, aria2Config.dir)">推送2</n-button>
-            </n-input-group>
-            <n-input-group v-else>
-              <n-input :value="aria2Config?.command_480_origin"></n-input>
-              <n-button type="primary" @click="copy(aria2Config?.command_480_origin)">复制</n-button>
-              <n-button type="primary" @click="aria2Post2(aria2Config, '480P')">推送</n-button>
-              <n-button type="primary" @click="aria2Post3(aria2Config.url_480_origin, aria2Config.out, aria2Config.dir)">推送2</n-button>
-            </n-input-group>
-          </n-form-item>
+          <template v-for="(item, index) in aria2Config.mediaMap" :key="index">
+            <n-form-item :label="item[0]">
+              <n-input-group>
+                <n-input :value="pushReplace ? item[1].replace : item[1].url"></n-input>
+                <n-button type="primary" @click="aria2Push(item[0])">推送</n-button>
+              </n-input-group>
+            </n-form-item>
+          </template>
         </n-form>
       </n-card>
     </n-modal>
@@ -333,6 +273,7 @@
         <n-form label-width="0" label-align="left" label-placement="left">
           <n-form-item>
             <n-input :value="copyValue"></n-input>
+            <n-button type="primary" @click="copy(copyValue)">复制</n-button>
           </n-form-item>
         </n-form>
       </n-card>
@@ -351,12 +292,14 @@ import { CirclePlus, CircleX, Dots, Share, Copy as IconCopy, SwitchHorizontal, L
 import { byteConvert } from '../utils'
 import PlyrVue from '../components/Plyr.vue'
 import TaskVue from '../components/Task.vue'
+import Aria2Task from '../components/Aria2Task.vue'
 import ClipboardJS from 'clipboard'
 import streamSaver from 'streamsaver'
 import { DropdownMixedOption } from 'naive-ui/lib/dropdown/src/interface'
 import aria2Api from '../api/aria2Api';
 import axios from 'axios';
   const filesList = ref()
+  const safari = ref(false)
   const route = useRoute()
   const router = useRouter()
   interface FileInfo {
@@ -646,7 +589,6 @@ import axios from 'axios';
     initPage()
   })
   const aria2Data = ref()
-  const optimizeData = ref()
   const parentInfo = ref()
   const samllPage = ref(true)
   onMounted(() => {
@@ -655,6 +597,10 @@ import axios from 'axios';
       samllPage.value = false
       columns.value.splice(2, 0, ...smallColums.value)
       columns.value[columns.value.length - 1].width = 300
+    }
+    var userAgent = navigator.userAgent
+    if (userAgent.indexOf("Safari") > -1 && userAgent.indexOf("Macintosh") > -1 && userAgent.indexOf("Edg") === -1 && userAgent.indexOf("Chromme") === -1) {
+      safari.value = true
     }
     let aria2 = JSON.parse(window.localStorage.getItem('pikpakAria2') || '{}')
     if(aria2.dir === undefined) {
@@ -665,8 +611,13 @@ import axios from 'axios';
     }
     let optimize = JSON.parse(window.localStorage.getItem('pikpakOptimize') || '{}')
     if(optimize.url) {
-      optimizeData.value = optimize
+      aria2Replace.value.replace = true
+      aria2Replace.value.url = optimize.url
     }
+
+    // if(optimize.aria2Host || optimize.accountAutomatic) {
+    //   optimizeData.value = optimize
+    // }
     initPage()
     window.onbeforeunload = function (e) {
       if(!window.$downId || window.$downId.length === 0) {
@@ -702,7 +653,11 @@ import axios from 'axios';
   const showCopy = ref(false)
   const showAriaOption = ref(false)
   const pushOrigin = ref(true)
-  const aria2Replace = ref(false)
+  const pushReplace = ref(false)
+  const aria2Replace = ref({
+    replace: false,
+    url: ''
+  })
   const newUrl = ref()
   const taskRef = ref()
   const firstFolder = computed(() => {
@@ -827,6 +782,7 @@ import axios from 'axios';
         clipboard.destroy()
       })
       clipboard.on('error', (e) => {
+        console.log(e)
         window.$message.error('复制失败，您可以F12打开控制台手动复制，或手动复制弹窗输入框')
         showCopyFail.value = true
         copyValue.value = value
@@ -954,7 +910,7 @@ import axios from 'axios';
   const aria2Dir = ref()
   const getAria2Dir = () => {
     let postData:any = {
-        id:'',
+        id:'pikpak',
         jsonrpc:'2.0',
         method:'aria2.getGlobalOption',
         params:[
@@ -977,98 +933,217 @@ import axios from 'axios';
   }
   const aria2Option = (res:any, dir?:string) => {
 
-    aria2Replace.value = optimizeData.value?.url
-    const replaceDomain  = optimizeData.value?.url || ''
-    let medias = res.data.medias
-    let result = medias ? medias.find((media:any) => media.media_name === '原画') : undefined
-    let url_yh = result ? result.link.url : undefined
-    result = medias ? medias.find((media:any) => media.media_name === '1080P') : undefined
-    let url_1080 = result ? result.link.url : undefined
-    result = medias ? medias.find((media:any) => media.media_name === '720P') : undefined
-    let url_720 = result ? result.link.url : undefined
-    result = medias ? medias.find((media:any) => media.media_name === '480P') : undefined
-    let url_480 = result ? result.link.url : undefined
-    let url = res.data.web_content_link
-    let postUrl = ''
-    const out = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00').replace(/.mp4/g, 's.mp4')
-    const out_h264 = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00')
+    if(res.data && res.data.medias && res.data.medias.length > 0) {
+      let medias = res.data.medias
+      let map:Map<string,any> = new Map()
+      map.set('链接', {
+        type: '', 
+        url: res.data.web_content_link, 
+        replace: aria2Replace.value.replace ? res.data.web_content_link.replace(/dl.*.com/g,aria2Replace.value.url) : ''
+      })
+      medias.forEach((media:any) => {
+        map.set(media.media_name, {
+          type: media.video.video_type,
+          url: media.link.url,
+          replace: aria2Replace.value.replace ? media.link.url.replace(/dl.*.com/g,aria2Replace.value.url) : ''
+        })
+      })
+      aria2Config.value.mediaMap = map
+      aria2Config.value.dir = dir
+      aria2Config.value.out = res.data.name
+    }
+
+
+    // const replaceDomain  = aria2Replace.value.url
+    // let medias = res.data.medias
+    // let result = medias ? medias.find((media:any) => media.media_name === '原画') : undefined
+    // let url_yh = result ? result.link.url : undefined
+    // result = medias ? medias.find((media:any) => media.media_name === '1080P') : undefined
+    // let url_1080 = result ? result.link.url : undefined
+    // result = medias ? medias.find((media:any) => media.media_name === '720P') : undefined
+    // let url_720 = result ? result.link.url : undefined
+    // result = medias ? medias.find((media:any) => media.media_name === '480P') : undefined
+    // let url_480 = result ? result.link.url : undefined
+    // let url = res.data.web_content_link
+    // let postUrl = ''
+    // const out = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00').replace(/.mp4/g, 's.mp4')
+    // const out_h264 = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00')
+    // let postData:any = {
+    //     id:'pikpak',
+    //     jsonrpc:'2.0',
+    //     method:'aria2.addUri',
+    //     params:[
+    //         [postUrl],
+    //         {
+    //           out: out
+    //         }
+    //     ]
+    // }
+    // if(dir && aria2Dir.value) {
+    //   postData.params[1].dir = aria2Dir.value + '/' + dir
+    // }
+    // if(aria2Data.value.token) {
+    //   postData.params.splice(0, 0, 'token:' + aria2Data.value.token)
+    // }
+    // const curl_origin = "curl aria2host -X POST -d 'postdata' --header 'Content-Type: application/json'"
+    // const curl = curl_origin.replace('aria2host', aria2Data.value.host)
+    // if(url_yh) {
+    //   postData.params[0][0] = url_yh
+    //   aria2Config.value.command_yh_origin = curl.replace('postdata', JSON.stringify(postData))
+    //   aria2Config.value.url_yh_origin = url_yh
+    //   if(aria2Replace.value.replace) {
+    //     postUrl = url_yh.replace(/dl.*.com/g,replaceDomain)
+    //     postData.params[0][0] = postUrl
+    //     aria2Config.value.command_yh = curl.replace('postdata', JSON.stringify(postData))
+    //     aria2Config.value.url_yh = postUrl
+    //   }
+    // }
+    // if(url_1080) {
+    //   postData.params[0][0] = url_1080
+    //   aria2Config.value.command_1080_origin = curl.replace('postdata', JSON.stringify(postData))
+    //   aria2Config.value.url_1080_origin = url_1080
+    //   if(aria2Replace.value.replace) {
+    //     postUrl = url_1080.replace(/dl.*.com/g,replaceDomain)
+    //     postData.params[0][0] = postUrl
+    //     aria2Config.value.command_1080 = curl.replace('postdata', JSON.stringify(postData))
+    //     aria2Config.value.url_1080 = postUrl
+    //   }      
+    // }
+    // if(url_720) {
+    //   postData.params[0][0] = url_720
+    //   aria2Config.value.command_720_origin = curl.replace('postdata', JSON.stringify(postData))
+    //   aria2Config.value.url_720_origin = url_720
+    //   if(aria2Replace.value.replace) {
+    //     postUrl = url_720.replace(/dl.*.com/g,replaceDomain)
+    //     postData.params[0][0] = postUrl
+    //     aria2Config.value.command_720 = curl.replace('postdata', JSON.stringify(postData))
+    //     aria2Config.value.url_720 = postUrl
+    //   }
+    // }
+    // if(url_480) {
+    //   postData.params[0][0] = url_480
+    //   aria2Config.value.command_480_origin = curl.replace('postdata', JSON.stringify(postData))
+    //   aria2Config.value.url_480_origin = url_480
+    //   if(aria2Replace.value.replace) {
+    //     postUrl = url_480.replace(/dl.*.com/g,replaceDomain)
+    //     postData.params[0][0] = postUrl
+    //     aria2Config.value.command_480 = curl.replace('postdata', JSON.stringify(postData))
+    //     aria2Config.value.url_480 = postUrl
+    //   }
+    // }
+    // postData.params[0][0] = url
+    // aria2Config.value.command_origin = curl.replace('postdata', JSON.stringify(postData))
+    // aria2Config.value.url_origin = url
+    // if(aria2Replace.value.replace) {
+    //   postUrl = url.replace(/dl.*.com/g,replaceDomain)
+    //   postData.params[0][0] = postUrl
+    //   aria2Config.value.command = curl.replace('postdata', JSON.stringify(postData))
+    //   aria2Config.value.url = postUrl    
+    // }
+    // aria2Config.value.dir = dir
+    // aria2Config.value.out = out
+    // aria2Config.value.out_h264 = out_h264
+    showAriaOption.value = true
+  }
+
+  const aria2Push = (key:string) => {
+    let media = aria2Config.value.mediaMap.get(key)
+    let url = pushReplace.value ? media.replace : media.url
+    let name:string = aria2Config.value.out
+    // const out = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00').replace(/.mp4/g, 's.mp4')
+    // const out_h264 = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00')
+    // hhd800.com@FSDSS-408-C_X1080X.mp4
+    if(name.search(/-C_X1080X/g) != -1) {
+      name = name.replace(/-C_X1080X/g, 'c')
+    }
+    //hhd800.com@ADN-379.mp4
+    if(name.search(/.+\..+@/g) != -1) {
+      name = name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00')
+    }
+    //mpegts
+    if(media.type.search(/mpegts/g) !== -1) {
+      name = name.replace(/.mp4/g, 's.mp4')
+    }
+    // if(safari.value) {
+    //   aria2PushIndirect(url, name)
+    // } else {
+    //   aria2PushDirect(url, name)
+    // }
+    aria2PushDirect(url, name)
+  }
+
+  const aria2PushDirect = (url:string, name:string) => {
     let postData:any = {
-        id:'',
+        id:'pikpak',
         jsonrpc:'2.0',
         method:'aria2.addUri',
         params:[
-            [postUrl],
+            [url],
             {
-              out: out
+              out: name
             }
         ]
     }
-    if(dir && aria2Dir.value) {
-      postData.params[1].dir = aria2Dir.value + '/' + dir
+    if(aria2Config.value.dir && aria2Dir.value) {
+      postData.params[1].dir = aria2Dir.value + '/' + aria2Config.value.dir
     }
     if(aria2Data.value.token) {
       postData.params.splice(0, 0, 'token:' + aria2Data.value.token)
     }
-    const curl_origin = "curl aria2host -X POST -d 'postdata' --header 'Content-Type: application/json'"
-    const curl = curl_origin.replace('aria2host', aria2Data.value.host)
-    if(url_yh) {
-      postData.params[0][0] = url_yh
-      aria2Config.value.command_yh_origin = curl.replace('postdata', JSON.stringify(postData))
-      aria2Config.value.url_yh_origin = url_yh
-      if(aria2Replace.value) {
-        postUrl = url_yh.replace(/dl.*.com/g,replaceDomain)
-        postData.params[0][0] = postUrl
-        aria2Config.value.command_yh = curl.replace('postdata', JSON.stringify(postData))
-        aria2Config.value.url_yh = postUrl
-      }
-    }
-    if(url_1080) {
-      postData.params[0][0] = url_1080
-      aria2Config.value.command_1080_origin = curl.replace('postdata', JSON.stringify(postData))
-      aria2Config.value.url_1080_origin = url_1080
-      if(aria2Replace.value) {
-        postUrl = url_1080.replace(/dl.*.com/g,replaceDomain)
-        postData.params[0][0] = postUrl
-        aria2Config.value.command_1080 = curl.replace('postdata', JSON.stringify(postData))
-        aria2Config.value.url_1080 = postUrl
-      }      
-    }
-    if(url_720) {
-      postData.params[0][0] = url_720
-      aria2Config.value.command_720_origin = curl.replace('postdata', JSON.stringify(postData))
-      aria2Config.value.url_720_origin = url_720
-      if(aria2Replace.value) {
-        postUrl = url_720.replace(/dl.*.com/g,replaceDomain)
-        postData.params[0][0] = postUrl
-        aria2Config.value.command_720 = curl.replace('postdata', JSON.stringify(postData))
-        aria2Config.value.url_720 = postUrl
-      }
-    }
-    if(url_480) {
-      postData.params[0][0] = url_480
-      aria2Config.value.command_480_origin = curl.replace('postdata', JSON.stringify(postData))
-      aria2Config.value.url_480_origin = url_480
-      if(aria2Replace.value) {
-        postUrl = url_480.replace(/dl.*.com/g,replaceDomain)
-        postData.params[0][0] = postUrl
-        aria2Config.value.command_480 = curl.replace('postdata', JSON.stringify(postData))
-        aria2Config.value.url_480 = postUrl
-      }
-    }
-    postData.params[0][0] = url
-    aria2Config.value.command_origin = curl.replace('postdata', JSON.stringify(postData))
-    aria2Config.value.url_origin = url
-    if(aria2Replace.value) {
-      postUrl = url.replace(/dl.*.com/g,replaceDomain)
-      postData.params[0][0] = postUrl
-      aria2Config.value.command = curl.replace('postdata', JSON.stringify(postData))
-      aria2Config.value.url = postUrl    
-    }
-    aria2Config.value.dir = dir
-    aria2Config.value.out = out
-    aria2Config.value.out_h264 = out_h264
-    showAriaOption.value = true
+    fetch(aria2Data.value.host, {
+        method: 'POST',
+        body: JSON.stringify(postData),
+        headers: new Headers({
+        'Content-Type': 'application/json'
+      })
+    })
+      .then(response => response.json())
+      .then(res => {
+        if(res.error && res.error.message) {
+          window.$message.error(res.error.message)
+          copy(url)
+        } else if(res.result) {
+          window.$message.success('推送成功')
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error)
+        window.$message.error('推送失败')
+        copy(url)
+      })
   }
+
+  const aria2PushIndirect = (url:string, name:string) => {
+    aria2Api.push(url, aria2Config.value.out, aria2Data.value.host)
+      .then((res:any) => {
+        window.$message.success('推送成功! Yep!')
+      })
+      .catch( err => {
+        console.log(err)
+        window.$message.error('推送失败，拷贝命令')
+        let postData:any = {
+          id:'pikpak',
+          jsonrpc:'2.0',
+          method:'aria2.addUri',
+          params:[
+              [url],
+              {
+                out: name
+              }
+          ]
+        }
+        if(aria2Config.value.dir && aria2Dir.value) {
+          postData.params[1].dir = aria2Dir.value + '/' + aria2Config.value.dir
+        }
+        if(aria2Data.value.token) {
+          postData.params.splice(0, 0, 'token:' + aria2Data.value.token)
+        }
+        const curl_origin = "curl aria2host -X POST -d 'postdata' --header 'Content-Type: application/json'"
+        const curl = curl_origin.replace('aria2host', aria2Data.value.host).replace('postdata', JSON.stringify(postData))
+        copy(curl)
+      })
+  }
+
   const aria2Post3 = (url:string, name:string, dir?:string) => {
 
     aria2Api.push(url, name, aria2Data.value.host)
@@ -1123,7 +1198,7 @@ import axios from 'axios';
       }
     }
     let postData:any = {
-        id:'',
+        id:'pikpak',
         jsonrpc:'2.0',
         method:'aria2.addUri',
         params:[
@@ -1162,7 +1237,7 @@ import axios from 'axios';
 //      url = res.data.medias[0]?.link?.url || url
 //    }
     let postData:any = {
-        id:'',
+        id:'pikpak',
         jsonrpc:'2.0',
         method:'aria2.addUri',
         params:[

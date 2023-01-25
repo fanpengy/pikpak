@@ -130,7 +130,7 @@ import { CircleX } from '@vicons/tabler'
   })
 </script>
 
-<style>
+<style scoped>
 .container {
   position: fixed;
   width: 375px;
@@ -139,8 +139,7 @@ import { CircleX } from '@vicons/tabler'
 }
 @media(max-width: 968px) {
   .container {
-    width: 100%;
-    right: 0;
+    width: 49%;
     bottom: 0;
     left: 0;
   }

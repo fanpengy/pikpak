@@ -22,8 +22,12 @@
           <n-form-item>
             <n-button type="primary" class="block" :loading="loading" @click="loginPost">登陆</n-button>
           </n-form-item>
+          <n-form-item>
+            <n-button type="primary" class="block" :loading="loading" @click="loginPostDirect">直接登陆</n-button>
+          </n-form-item>
           <n-form-item label="">
             <a target="_blank" href="https://i.mypikpak.com/v1/file/center/account/v1/password/?type=forget_password&locale=zh-cn" class="forget-password">忘记密码</a>
+            <a href="javascript:;" @click="pullAccounts">拉取账号</a>
             <a href="javascript:;" @click="getApk">去下载注册得5天VIP</a>
           </n-form-item>
         </n-form>
@@ -56,18 +60,38 @@
 
 <script setup lang='ts'>
 import { ref } from '@vue/reactivity';
+import { onMounted} from '@vue/runtime-core'
 import { NForm, NFormItem, NInput, NButton, useMessage, NCheckbox, useDialog, NTooltip, NIcon, NSpace } from 'naive-ui'
 import http from '../utils/axios'
 import { useRoute, useRouter } from 'vue-router'
 import { BrandGoogle, Phone } from '@vicons/tabler'
+import accountApi from '../api/accountApi'
+import aes from '../utils/aes'
+import instance from '../utils/axios';
 const loginData = ref({
   username: '',
   password: ''
 })
 const route  = useRoute()
+const optimizeData = ref()
+const accountsData = ref({
+  id: 0,
+  stamp: 0,
+  accounts: []
+})
 const loading = ref(false)
 const router = useRouter()
 const message = useMessage()
+onMounted(() => {
+    let optimize = JSON.parse(window.localStorage.getItem('pikpakOptimize') || '{}')
+    if(optimize.accountAutomatic) {
+      optimizeData.value = optimize
+    }
+    let accountInfo = JSON.parse(window.localStorage.getItem('pikpakAccounts') || '{}')
+    if(accountInfo.accounts && accountInfo.accounts.length > 1) {
+      accountsData.value = accountInfo
+    }
+})
 const loginPost = () => {
   if(!loginData.value.password || !loginData.value.username) {
     return false
@@ -96,6 +120,83 @@ const loginPost = () => {
       loading.value = false
     })
 }
+
+const loginPostDirect = async () => {
+  // 如果是使用本地账户 那就要考虑时间戳和登录后记录id
+  let account:any = {}
+  if(!optimizeData.value.accountLocal) {
+    account = await accountApi.query()
+    .then((res:any) => {
+      if(res.data.length <=0 ) {
+        // no useful account
+        window.$message.error('没有可用账号')
+        return {}
+      } else {
+        return res.data[0]
+      }
+    })
+    .catch(error => {
+      console.error(error.response)
+      window.$message.error('查询账号失败')
+      return {}
+    })
+  } else {
+      //判断时间 重置stamp
+      let now = new Date()
+      let results = <any>[]
+      if(accountsData.value.stamp > now.getTime()) {
+        results = accountsData.value.accounts.sort((a:any,b:any) => a.id - b.id).filter((a:any) => a.id > accountsData.value.id)
+      } else {
+        results = accountsData.value.accounts.sort((a:any,b:any) => a.id - b.id).filter((a:any) => a.id > 0)
+      }
+      if(results.length > 0) {
+        account = results[0]
+      } else {
+        window.$message.error('没有可用账号')
+      }
+  }
+  if(account.id && account.id > 0) {
+    if(!loading.value) {
+      const email = aes.decrypt(account.email, optimizeData.value.key)
+      const password = aes.decrypt(account.password, optimizeData.value.key)
+      const loginDataJson = {
+        username: email,
+        password: password
+      }
+      console.debug(loginDataJson)
+      loading.value = true
+      return instance.post('https://user.mypikpak.com/v1/auth/signin', {
+        "captcha_token": "",
+        "client_id": "YNxT9w7GMdWvEOKa",
+        "client_secret": "dbw2OtmVEeuUvIptb1Coyg",
+        ...loginDataJson
+      })
+        .then((res:any) => {
+          if(res.data && res.data.access_token) {
+            res.data.id = account.id
+            window.localStorage.setItem('pikpakLogin', JSON.stringify(res.data))
+          }
+          loading.value = false
+          message.success('登录成功')
+          router.push('/')
+        })
+        .catch(() => {
+          loading.value = false
+          window.$message.error('自动登录失败')
+        })
+    } else {
+      return new Promise((resolve, reject) => {
+        const s = setInterval(() => {
+          if(!loading.value) {
+            clearInterval(s)
+            //resolve(instance(config))
+            router.push('/list')
+          }
+        }, 100)
+      })
+    }
+  }
+}
 const remember = ref(false)
 const dialog = useDialog()
 const showMessage = () => {
@@ -117,6 +218,32 @@ const getApk = () => {
   http.get('https://api-drive.mypikpak.com/package/v1/apk/url/225815')
     .then((res:any) => {
       window.open(res.data.apk_url)
+    })
+}
+const pullAccounts = () => {
+  accountApi.queryAll()
+    .then((res:any) => {
+      if(res.data.length <= 0 ) {
+        // no useful account
+        window.$message.error('没有可用账号')
+      } else {
+        const accounts = res.data
+        accountsData.value.accounts = accounts
+        let accountInfo = JSON.parse(window.localStorage.getItem('pikpakAccounts') || '{}')
+        let now = new Date()
+        if(now.getTime() > accountInfo.stamp) {
+          //今天没拉取过
+          now.setHours(0,0,0,0)
+          let stamp = now.getTime() + 86400000
+          accountsData.value.stamp = stamp
+          accountsData.value.id = 0
+        }
+        window.localStorage.setItem('pikpakAccounts', JSON.stringify(accountsData.value))
+      }
+    })
+    .catch(err => {
+      console.error(err.response)
+      window.$message.error('查询账号失败')
     })
 }
 </script>

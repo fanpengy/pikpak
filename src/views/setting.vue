@@ -58,7 +58,7 @@
           </n-form-item>
         </n-form>
       </n-collapse-item>
-      <n-collapse-item name="2" title="加密设置" v-if="optimizeData.autoChangeAccount">
+      <n-collapse-item name="2" title="加密设置" v-if="optimizeData.accountAutomatic">
         <n-form label-width="100px" label-align="left" label-placement="left">
           <n-form-item label="文本：">
             <n-input v-model:value="aesData.origin"></n-input>
@@ -85,14 +85,20 @@
           <n-form-item label="替换域：">
             <n-input v-model:value="optimizeData.url" placeholder="格式像这样161.117.80.120"></n-input>
           </n-form-item>
-          <n-form-item label="自动循环：">
-            <n-switch v-model:value="optimizeData.autoChangeAccount"></n-switch>
+          <n-form-item label="aria2服务：">
+            <n-input v-model:value="optimizeData.aria2Host"></n-input>
           </n-form-item>
-          <n-form-item label="密匙：" v-if="optimizeData.autoChangeAccount">
+          <n-form-item label="自动账号：">
+            <n-switch v-model:value="optimizeData.accountAutomatic"></n-switch>
+          </n-form-item>
+          <n-form-item label="本地账号：" v-if="optimizeData.accountAutomatic">
+            <n-switch v-model:value="optimizeData.accountLocal"></n-switch>
+          </n-form-item>
+          <n-form-item label="密匙：" v-if="optimizeData.accountAutomatic">
             <n-input v-model:value="optimizeData.key"></n-input>
           </n-form-item>
-          <n-form-item label="服务：" v-if="optimizeData.autoChangeAccount">
-            <n-input v-model:value="optimizeData.host"></n-input>
+          <n-form-item label="账号服务：" v-if="optimizeData.accountAutomatic">
+            <n-input v-model:value="optimizeData.accountHost"></n-input>
           </n-form-item>
           <n-form-item>
             <n-button type="primary" @click="saveOptimize">保存</n-button>
@@ -151,9 +157,11 @@ const aria2Data = ref({
 })
 const optimizeData = ref({
   url: '',
-  autoChangeAccount: false,
+  accountAutomatic: false,
   key: undefined,
-  host: ''
+  aria2Host: '',
+  accountHost: '',
+  accountLocal: true
 })
 const aesData = ref({
   origin: '',
@@ -215,11 +223,13 @@ const saveAria2Direct = () => {
   window.$message.success('保存成功')
 }
 const saveOptimize = () => {
-  if(!optimizeData.value.autoChangeAccount) {
+  if(!optimizeData.value.accountAutomatic) {
     optimizeData.value.key = undefined
   } 
-  if (optimizeData.value.autoChangeAccount && !optimizeData.value.key) {
+  if (optimizeData.value.accountAutomatic && !optimizeData.value.key) {
     window.$message.error('保存失败，请填写密匙！')
+  } else if (optimizeData.value.accountAutomatic && !optimizeData.value.accountLocal && !optimizeData.value.accountHost) {
+    window.$message.error('保存失败，请填写账号服务地址！')
   } else {
     window.localStorage.setItem('pikpakOptimize', JSON.stringify(optimizeData.value))
     window.$message.success('保存成功')
@@ -283,14 +293,14 @@ onMounted(() => {
   if(aria2.dir === undefined) {
     aria2.dir = true
   }
-  if(aria2.host) {
+  if(aria2.host) {            
     aria2Data.value = aria2
   }
-  if(optimize.url || optimize.autoChangeAccount || optimize.key) {
+  if(optimize.url || optimize.accountAutomatic || optimize.aria2Host) {
     optimizeData.value = optimize
   }
   let login = JSON.parse(window.localStorage.getItem('pikpakLoginData') || '{}')
-  if(login.username && login.password) {
+  if(login.username && login.password) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
     loginData.value = login
     loginSwitch.value = true 
   }
