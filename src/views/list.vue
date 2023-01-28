@@ -38,7 +38,7 @@
       </div>
     </n-scrollbar>
     <task-vue ref="taskRef"></task-vue>
-    <Aria2Task></Aria2Task>
+    <Aria2Task  v-if="aria2Data"></Aria2Task>
     <div class="outer-wrapper static show" v-if="checkedRowKeys.length">
       <div class="toolbar-wrapper">
         <div class="toolbar-item" @click="batchCopyAll">
@@ -61,7 +61,7 @@
             剪切所选
           </n-tooltip>
         </div>
-        <div class="toolbar-item" @click="aria2All">
+        <div class="toolbar-item" @click="aria2AllReplace">
           <n-tooltip>
             <template #trigger>
               <n-icon>
@@ -236,14 +236,8 @@
       <n-card style="width: 800px;" title="Aria2选项">
         <template #header-extra>
           <n-space>
-            <span v-if="aria2Replace.replace">替换链接</span>
-            <n-switch v-model:value="pushReplace" v-if="aria2Replace.replace">
-              <!-- <template #checked>
-                替
-              </template>
-              <template #unchecked>
-                源
-              </template> -->
+            <span v-if="linkReplace.replace">替换链接</span>
+            <n-switch v-model:value="pushReplace" v-if="linkReplace.replace">
             </n-switch>
             <n-icon @click="showAriaOption = false">
               <circle-x></circle-x>
@@ -287,7 +281,7 @@ import { ref } from '@vue/reactivity';
 import { h, computed, onMounted, watch, nextTick } from '@vue/runtime-core'
 import http, { notionHttp } from '../utils/axios'
 import { useRoute, useRouter } from 'vue-router'
-import { DataTableColumns, NDataTable, NTime, NEllipsis, NModal, NCard, NInput, NBreadcrumb, NBreadcrumbItem, NIcon, useThemeVars, NButton, NTooltip, NSpace, NScrollbar, NSpin, NDropdown, useDialog, NAlert, useNotification, NotificationReactive, NSelect, NForm, NFormItem, NTag, NText, NInputGroup , NSwitch} from 'naive-ui'
+import { DataTableColumns, NDataTable, NTime, NEllipsis, NModal, NCard, NInput, NBreadcrumb, NBreadcrumbItem, NIcon, useThemeVars, NButton, NTooltip, NSpace, NScrollbar, NSpin, NDropdown, useDialog, NAlert, useNotification, NotificationReactive, NSelect, NForm, NFormItem, NTag, NText, NInputGroup , NSwitch, NTabs, NTabPane, NList, NListItem, NThing} from 'naive-ui'
 import { CirclePlus, CircleX, Dots, Share, Copy as IconCopy, SwitchHorizontal, LetterA, ZoomQuestion, Trash as IconDelete } from '@vicons/tabler'
 import { byteConvert } from '../utils'
 import PlyrVue from '../components/Plyr.vue'
@@ -361,7 +355,8 @@ import axios from 'axios';
           }
         }, [
           h('img', {
-            src: row.thumbnail_link || row.icon_link
+            // src: row.thumbnail_link || row.icon_link
+            src: row.icon_link || row.thumbnail_link
           }),
           h(NEllipsis, {
               class: 'title',
@@ -414,27 +409,63 @@ import axios from 'axios';
           }, {
             default: () => '剪贴'
           }),
-          !samllPage.value && row.kind === 'drive#file' && h(NText, {
+          !samllPage.value && row.kind === 'drive#file' && (!aria2Data.value || !aria2Data.value.host) && h(NText, {
             type: 'primary',
             onClick: () => downFile(row.id)
           }, {
             default: () => '下载'
           }),
+          !samllPage.value && row.kind === 'drive#file' && aria2Data.value && aria2Data.value.host && h(NText, {
+            type: 'primary',
+            onClick: () => {
+              getFile(row.id)
+                    .then((res:any) => {
+                      aria2Option(res)
+                    })
+            }
+          }, {
+            default: () => '推送'
+          }),
+          // !samllPage.value && h(NText, {
+          //   type: 'primary',
+          //   onClick: () => {
+          //     dialog.warning({
+          //       title: '警告',
+          //       content: '确定删除' + row.name  + '？',
+          //       positiveText: '确定',
+          //       negativeText: '不确定',
+          //       onPositiveClick: () => {
+          //         deleteFile(String(row.id))
+          //       }
+          //     })
+          //   }
+          // }, {
+          //   default: () => '删除'
+          // }),
           !samllPage.value && h(NText, {
             type: 'primary',
             onClick: () => {
-              dialog.warning({
-                title: '警告',
-                content: '确定删除' + row.name  + '？',
-                positiveText: '确定',
-                negativeText: '不确定',
-                onPositiveClick: () => {
-                  deleteFile(String(row.id))
-                }
-              })
+              if(row.kind === 'drive#folder') {
+                fileInfo.value = {}
+                fileInfo.value.name = 'aa'
+                fileInfo.value.web_content_link = replaceUrl(row.thumbnail_link || row.icon_link)
+                showImage.value = true
+              } else if(row.mime_type.indexOf('video') != -1 || row.mime_type.indexOf('image') != -1) {
+                getFile(row.id)
+                  .then((res:any) => {
+                    fileInfo.value = {}
+                    fileInfo.value.name = res.data.name
+                    if(row.mime_type.indexOf('video') != -1) {
+                      fileInfo.value.web_content_link = replaceUrl(res.data.thumbnail_link || res.data.icon_link)
+                    } else {
+                      fileInfo.value.web_content_link = replaceUrl(res.data.web_content_link)
+                    }
+                    showImage.value = true
+                  })
+              }
             }
           }, {
-            default: () => '删除'
+            default: () => '预览'
           }),
           h(NDropdown, {
             trigger: 'click',
@@ -465,7 +496,6 @@ import axios from 'axios';
                   getFile(row.id)
                     .then((res:any) => {
                       // aria2Post(res)
-                      aria2Config.value = {}
                       aria2Option(res)
                     })
                   break
@@ -611,9 +641,11 @@ import axios from 'axios';
     }
     let optimize = JSON.parse(window.localStorage.getItem('pikpakOptimize') || '{}')
     if(optimize.url) {
-      aria2Replace.value.replace = true
-      aria2Replace.value.url = optimize.url
+      linkReplace.value.replace = true
+      linkReplace.value.url = optimize.url
     }
+    const proxyArray = JSON.parse(window.localStorage.getItem('proxy') || '[]')
+    proxys.value  = proxyArray
 
     // if(optimize.aria2Host || optimize.accountAutomatic) {
     //   optimizeData.value = optimize
@@ -635,7 +667,11 @@ import axios from 'axios';
     }
   })
   const fileInfo = ref()
-  const aria2Config = ref()
+  const aria2Config = ref({
+    mediaMap: new Map,
+    dir: <any>'',
+    out: ''
+  })
   const getFile = (id:string) => {
     return http.get('https://api-drive.mypikpak.com/drive/v1/files/' + id, {
       params: {
@@ -654,12 +690,13 @@ import axios from 'axios';
   const showAriaOption = ref(false)
   const pushOrigin = ref(true)
   const pushReplace = ref(false)
-  const aria2Replace = ref({
+  const linkReplace = ref({
     replace: false,
     url: ''
   })
   const newUrl = ref()
   const taskRef = ref()
+  const proxys = ref([])
   const firstFolder = computed(() => {
     let id:string = ''
     if(route.params.id) {
@@ -872,6 +909,43 @@ import axios from 'axios';
     }
     postOne()
   }
+  const aria2AllReplace = async () => {
+    if(allLoding.value) {
+      return false
+    }
+    await getAllFile()
+    if(!aria2Dir.value && aria2Data.value.dir) {
+      await getAria2Dir()
+    }
+    const postOne =  () => {
+      getFile(downFileList.value[0].id)
+        .then(async res => {
+          const data:any = downFileList.value.shift()
+          aria2Option(res, data.parent, false)
+          let media = aria2Config.value.mediaMap.get('链接')
+          //await aria2Post(res, data.parent)
+          if(linkReplace.value.replace) {
+            aria2PushDirect(media.replace, aria2Config.value.out)
+          } else {
+            aria2PushDirect(media.url, aria2Config.value.out)
+          }
+          if(nRef.value?.content) {
+            nRef.value.content = nRef.value?.content + '\r\n' + '推送' + data.parent + '/' + data.name + '成功'
+          }
+          if(downFileList.value.length) {
+            setTimeout(() => {
+              postOne()
+            }, 3000)
+          } else {
+            setTimeout(() => {
+              nRef.value?.destroy()
+              allLoding.value = false
+            }, 1000);
+          }
+        })
+    }
+    postOne()
+  }
   const downFile = (id:string) => {
     getFile(id)
       .then((info:any) => {
@@ -931,119 +1005,35 @@ import axios from 'axios';
         aria2Dir.value = res?.result?.dir || ''
       })
   }
-  const aria2Option = (res:any, dir?:string) => {
+  const aria2Option = (res:any, dir?:string, show?:boolean) => {
 
-    if(res.data && res.data.medias && res.data.medias.length > 0) {
-      let medias = res.data.medias
+    if(res.data) {
+      
       let map:Map<string,any> = new Map()
       map.set('链接', {
         type: '', 
         url: res.data.web_content_link, 
-        replace: aria2Replace.value.replace ? res.data.web_content_link.replace(/dl.*.com/g,aria2Replace.value.url) : ''
+        replace: linkReplace.value.replace ? res.data.web_content_link.replace(/dl.*.com/g,linkReplace.value.url) : ''
       })
-      medias.forEach((media:any) => {
-        map.set(media.media_name, {
-          type: media.video.video_type,
-          url: media.link.url,
-          replace: aria2Replace.value.replace ? media.link.url.replace(/dl.*.com/g,aria2Replace.value.url) : ''
+      if(res.data.medias && res.data.medias.length > 0) {
+        let medias = res.data.medias
+        medias.forEach((media:any) => {
+          map.set(media.media_name, {
+            type: media.video?.video_type || '',
+            url: media.link.url,
+            replace: linkReplace.value.replace ? media.link.url.replace(/dl.*.com/g,linkReplace.value.url) : ''
+          })
         })
-      })
+      }
       aria2Config.value.mediaMap = map
       aria2Config.value.dir = dir
       aria2Config.value.out = res.data.name
     }
-
-
-    // const replaceDomain  = aria2Replace.value.url
-    // let medias = res.data.medias
-    // let result = medias ? medias.find((media:any) => media.media_name === '原画') : undefined
-    // let url_yh = result ? result.link.url : undefined
-    // result = medias ? medias.find((media:any) => media.media_name === '1080P') : undefined
-    // let url_1080 = result ? result.link.url : undefined
-    // result = medias ? medias.find((media:any) => media.media_name === '720P') : undefined
-    // let url_720 = result ? result.link.url : undefined
-    // result = medias ? medias.find((media:any) => media.media_name === '480P') : undefined
-    // let url_480 = result ? result.link.url : undefined
-    // let url = res.data.web_content_link
-    // let postUrl = ''
-    // const out = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00').replace(/.mp4/g, 's.mp4')
-    // const out_h264 = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00')
-    // let postData:any = {
-    //     id:'pikpak',
-    //     jsonrpc:'2.0',
-    //     method:'aria2.addUri',
-    //     params:[
-    //         [postUrl],
-    //         {
-    //           out: out
-    //         }
-    //     ]
-    // }
-    // if(dir && aria2Dir.value) {
-    //   postData.params[1].dir = aria2Dir.value + '/' + dir
-    // }
-    // if(aria2Data.value.token) {
-    //   postData.params.splice(0, 0, 'token:' + aria2Data.value.token)
-    // }
-    // const curl_origin = "curl aria2host -X POST -d 'postdata' --header 'Content-Type: application/json'"
-    // const curl = curl_origin.replace('aria2host', aria2Data.value.host)
-    // if(url_yh) {
-    //   postData.params[0][0] = url_yh
-    //   aria2Config.value.command_yh_origin = curl.replace('postdata', JSON.stringify(postData))
-    //   aria2Config.value.url_yh_origin = url_yh
-    //   if(aria2Replace.value.replace) {
-    //     postUrl = url_yh.replace(/dl.*.com/g,replaceDomain)
-    //     postData.params[0][0] = postUrl
-    //     aria2Config.value.command_yh = curl.replace('postdata', JSON.stringify(postData))
-    //     aria2Config.value.url_yh = postUrl
-    //   }
-    // }
-    // if(url_1080) {
-    //   postData.params[0][0] = url_1080
-    //   aria2Config.value.command_1080_origin = curl.replace('postdata', JSON.stringify(postData))
-    //   aria2Config.value.url_1080_origin = url_1080
-    //   if(aria2Replace.value.replace) {
-    //     postUrl = url_1080.replace(/dl.*.com/g,replaceDomain)
-    //     postData.params[0][0] = postUrl
-    //     aria2Config.value.command_1080 = curl.replace('postdata', JSON.stringify(postData))
-    //     aria2Config.value.url_1080 = postUrl
-    //   }      
-    // }
-    // if(url_720) {
-    //   postData.params[0][0] = url_720
-    //   aria2Config.value.command_720_origin = curl.replace('postdata', JSON.stringify(postData))
-    //   aria2Config.value.url_720_origin = url_720
-    //   if(aria2Replace.value.replace) {
-    //     postUrl = url_720.replace(/dl.*.com/g,replaceDomain)
-    //     postData.params[0][0] = postUrl
-    //     aria2Config.value.command_720 = curl.replace('postdata', JSON.stringify(postData))
-    //     aria2Config.value.url_720 = postUrl
-    //   }
-    // }
-    // if(url_480) {
-    //   postData.params[0][0] = url_480
-    //   aria2Config.value.command_480_origin = curl.replace('postdata', JSON.stringify(postData))
-    //   aria2Config.value.url_480_origin = url_480
-    //   if(aria2Replace.value.replace) {
-    //     postUrl = url_480.replace(/dl.*.com/g,replaceDomain)
-    //     postData.params[0][0] = postUrl
-    //     aria2Config.value.command_480 = curl.replace('postdata', JSON.stringify(postData))
-    //     aria2Config.value.url_480 = postUrl
-    //   }
-    // }
-    // postData.params[0][0] = url
-    // aria2Config.value.command_origin = curl.replace('postdata', JSON.stringify(postData))
-    // aria2Config.value.url_origin = url
-    // if(aria2Replace.value.replace) {
-    //   postUrl = url.replace(/dl.*.com/g,replaceDomain)
-    //   postData.params[0][0] = postUrl
-    //   aria2Config.value.command = curl.replace('postdata', JSON.stringify(postData))
-    //   aria2Config.value.url = postUrl    
-    // }
-    // aria2Config.value.dir = dir
-    // aria2Config.value.out = out
-    // aria2Config.value.out_h264 = out_h264
-    showAriaOption.value = true
+    if(show === undefined) {
+      showAriaOption.value = true
+    } else {
+      showAriaOption.value = show
+    }
   }
 
   const aria2Push = (key:string) => {
@@ -1144,93 +1134,6 @@ import axios from 'axios';
       })
   }
 
-  const aria2Post3 = (url:string, name:string, dir?:string) => {
-
-    aria2Api.push(url, name, aria2Data.value.host)
-      .then((res:any) => {
-        window.$message.success('推送成功! Yep!')
-      })
-      .catch( err => {
-        console.log(err)
-        window.$message.error('查询账号异常，请重试')
-      })
-  }
-  const aria2Post2 = (config:any, type?: string, dir?:string) => {
-    let url = config.url
-    let out = config.out
-    if(pushOrigin.value) {
-      out = config.out_h264
-    }
-    if(type) {
-      switch (type) {
-        case '1080P':
-          if(pushOrigin.value) {
-            url = config.url_1080_origin
-          } else {
-            url = config.url_1080
-          }
-          break
-        case '720P':
-          if(pushOrigin.value) {
-            url = config.url_720_origin
-          } else {
-            url = config.url_720
-          }
-          break
-        case '480P':
-          if(pushOrigin.value) {
-            url = config.url_480_origin
-          } else {
-            url = config.url_480
-          }
-          break
-        default:
-          if(pushOrigin.value) {
-            url = config.url_yh_origin
-          } else {
-            url = config.url_yh
-          }
-          break
-      }
-    } else {
-      if(pushOrigin.value) {
-        url = config.url_origin
-      }
-    }
-    let postData:any = {
-        id:'pikpak',
-        jsonrpc:'2.0',
-        method:'aria2.addUri',
-        params:[
-            [url],
-            {
-              out: out
-            }
-        ]
-    }
-    if(dir && aria2Dir.value) {
-      postData.params[1].dir = aria2Dir.value + '/' + dir
-    }
-    if(aria2Data.value.token) {
-      postData.params.splice(0, 0, 'token:' + aria2Data.value.token)
-    }
-    fetch(aria2Data.value.host, {
-        method: 'POST',
-        body: JSON.stringify(postData),
-        headers: new Headers({
-        'Content-Type': 'application/json'
-      })
-    })
-      .then(response => response.json())
-      .then(res => {
-        if(res.error && res.error.message) {
-          window.$message.error(res.error.message)
-        } else if(res.result) {
-          window.$message.success('推送成功')
-        }
-      })
-      .catch(error => console.error('Error:', error))
-  }
   const aria2Post = (res:any, dir?:string) => {
     let url = res.data.web_content_link
 //    if(res.data.medias && res.data.medias.length) {
@@ -1275,6 +1178,14 @@ import axios from 'axios';
       if(pageToken.value && !loading.value) {
         getFileList()
       }
+    }
+  }
+
+  const replaceUrl = (url:string) => {
+    if(linkReplace.value.replace) {
+      return url.replace(/dl.*.com/g,linkReplace.value.url)
+    } else {
+      return url
     }
   }
   

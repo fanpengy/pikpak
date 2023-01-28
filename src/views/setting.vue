@@ -34,7 +34,7 @@
           <n-form-item>
             <n-space>
             <n-button type="primary" @click="testAria2">测试并保存</n-button>
-            <n-button type="primary" @click="saveAria2Direct" v-if="isSafari.value">不测试保存</n-button>
+            <n-button type="primary" @click="saveAria2Direct" v-if="safari">不测试保存</n-button>
             </n-space>
           </n-form-item>
         </n-form>
@@ -134,7 +134,7 @@
 import { ref } from '@vue/reactivity';
 import { onMounted, nextTick } from '@vue/runtime-core';
 import http from '../utils/axios'
-import { NForm, NFormItem, NButton, NInput, NCollapse, NCollapseItem, NSpace, NSwitch, useDialog, NAlert, NLog, NIcon } from 'naive-ui'
+import { NForm, NFormItem, NButton, NInput, NCollapse, NCollapseItem, NSpace, NSwitch, useDialog, NAlert, NLog, NIcon, NText } from 'naive-ui'
 import { Browser, ZoomQuestion } from '@vicons/tabler'
 import {proxy as proxyDefault} from '../config'
 import ClipboardJS from 'clipboard'
@@ -167,9 +167,7 @@ const aesData = ref({
   origin: '',
   encrypted: ''
 })
-const isSafari = ref({
-  value: false
-})
+const safari = ref(false)
 const copy = (value:string) => {
     nextTick(() => {
       const fakeElement = document.createElement('button')
@@ -288,7 +286,7 @@ onMounted(() => {
   let optimize = JSON.parse(window.localStorage.getItem('pikpakOptimize') || '{}')
   var userAgent = navigator.userAgent
   if (userAgent.indexOf("Safari") > -1 && userAgent.indexOf("Macintosh") > -1 && userAgent.indexOf("Edg") === -1 && userAgent.indexOf("Chromme") === -1) {
-    isSafari.value.value = true
+    safari.value = true
   }
   if(aria2.dir === undefined) {
     aria2.dir = true

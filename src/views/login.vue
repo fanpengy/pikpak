@@ -22,9 +22,9 @@
           <n-form-item>
             <n-button type="primary" class="block" :loading="loading" @click="loginPost">登陆</n-button>
           </n-form-item>
-          <n-form-item>
+          <!-- <n-form-item>
             <n-button type="primary" class="block" :loading="loading" @click="loginPostDirect">直接登陆</n-button>
-          </n-form-item>
+          </n-form-item> -->
           <n-form-item label="">
             <a target="_blank" href="https://i.mypikpak.com/v1/file/center/account/v1/password/?type=forget_password&locale=zh-cn" class="forget-password">忘记密码</a>
             <a href="javascript:;" @click="pullAccounts">拉取账号</a>
@@ -94,6 +94,7 @@ onMounted(() => {
 })
 const loginPost = () => {
   if(!loginData.value.password || !loginData.value.username) {
+    loginPostDirect()
     return false
   }
   loading.value = true
@@ -123,6 +124,7 @@ const loginPost = () => {
 
 const loginPostDirect = async () => {
   // 如果是使用本地账户 那就要考虑时间戳和登录后记录id
+  loading.value = true
   let account:any = {}
   if(!optimizeData.value.accountLocal) {
     account = await accountApi.query()
@@ -156,45 +158,34 @@ const loginPostDirect = async () => {
       }
   }
   if(account.id && account.id > 0) {
-    if(!loading.value) {
-      const email = aes.decrypt(account.email, optimizeData.value.key)
-      const password = aes.decrypt(account.password, optimizeData.value.key)
-      const loginDataJson = {
-        username: email,
-        password: password
-      }
-      console.debug(loginDataJson)
-      loading.value = true
-      return instance.post('https://user.mypikpak.com/v1/auth/signin', {
-        "captcha_token": "",
-        "client_id": "YNxT9w7GMdWvEOKa",
-        "client_secret": "dbw2OtmVEeuUvIptb1Coyg",
-        ...loginDataJson
-      })
-        .then((res:any) => {
-          if(res.data && res.data.access_token) {
-            res.data.id = account.id
-            window.localStorage.setItem('pikpakLogin', JSON.stringify(res.data))
-          }
-          loading.value = false
-          message.success('登录成功')
-          router.push('/')
-        })
-        .catch(() => {
-          loading.value = false
-          window.$message.error('自动登录失败')
-        })
-    } else {
-      return new Promise((resolve, reject) => {
-        const s = setInterval(() => {
-          if(!loading.value) {
-            clearInterval(s)
-            //resolve(instance(config))
-            router.push('/list')
-          }
-        }, 100)
-      })
+    const email = aes.decrypt(account.email, optimizeData.value.key)
+    const password = aes.decrypt(account.password, optimizeData.value.key)
+    const loginDataJson = {
+      username: email,
+      password: password
     }
+    console.debug(loginDataJson)
+    return instance.post('https://user.mypikpak.com/v1/auth/signin', {
+      "captcha_token": "",
+      "client_id": "YNxT9w7GMdWvEOKa",
+      "client_secret": "dbw2OtmVEeuUvIptb1Coyg",
+      ...loginDataJson
+    })
+      .then((res:any) => {
+        if(res.data && res.data.access_token) {
+          res.data.id = account.id
+          window.localStorage.setItem('pikpakLogin', JSON.stringify(res.data))
+        }
+        loading.value = false
+        message.success('登录成功')
+        router.push('/')
+      })
+      .catch(() => {
+        loading.value = false
+        window.$message.error('自动登录失败')
+      })
+  } else {
+    loading.value = false
   }
 }
 const remember = ref(false)

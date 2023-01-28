@@ -74,6 +74,7 @@ instance.interceptors.response.use(response => {
           const login = JSON.parse(window.localStorage.getItem('pikpakLogin') || '{}')
           const optimize = JSON.parse(localStorage.getItem('pikpakOptimize') || '{}')
           if(optimize.accountAutomatic) {
+            window.$message.warning((response?.data?.error_description || '出错了') + ' 尝试切换账号')
             const accountId = login.id ? login.id : -1
             let account:any = {}
             if(!optimize.accountLocal) {
@@ -94,6 +95,7 @@ instance.interceptors.response.use(response => {
                 account = getLocalAccount()
             }
             if(account.id && account.id > 0) {
+              window.$message.success('获取账号成功: ' + account.id + '，尝试登陆')
               if(!isLoginLoading) {
                 const email = aes.decrypt(account.email, optimize.key)
                 const password = aes.decrypt(account.password, optimize.key)
@@ -134,7 +136,7 @@ instance.interceptors.response.use(response => {
                 })
               }
             } else {
-              window.$message.error((response?.data?.error_description || '出错了') + ' 并且未获取到可用账号')
+              window.$message.error('获取账号失败！')
             }
           } else {
             window.$message.error(response?.data?.error_description || '出错了')

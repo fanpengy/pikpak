@@ -2,18 +2,26 @@
   <div class="container">
     <div class="content " :class="{hide: hide}">
       <div class="status-bar" @click="hide = !hide">
-        <div class="status-bar-wrapper">
-          {{tasksInfo?.actives || 0}}项下载中 &nbsp;{{tasksInfo?.waitings || 0}}项暂停中 &nbsp; <n-spin size="small" v-if="loading"/>
+        <div class="status-bar-wrapper" v-if="hide">
+          {{tasksInfo?.actives||0}}项下载&nbsp;&nbsp;
+          {{tasksInfo?.waitings||0}}项等待&nbsp;&nbsp;
+          {{tasksInfo?.stoppeds||0}}项停止/完成&nbsp;&nbsp;
+          <!-- 速度:{{byteConvert(tasksInfo?.downloadSpeed||0)}} -->
+          <!-- <n-spin size="small" v-if="loading"/> -->
+        </div>
+        <div class="status-bar-wrapper" v-else>
+          速度:{{byteConvert(tasksInfo?.downloadSpeed||0)}}
         </div>
       </div>
-      <div class="task-list">
+      <n-card class="task-list">
+        <n-empty description="没有任务" style="margin-top: 20px;margin-bottom: 30px;" v-if="tasksInfo.tasks.length === 0 && !loading"/>
         <n-scrollbar style="max-height: 400px;"  @scroll="scrollHandle">
-          <template v-for="(item, key) in tasksInfo.tasks" :key="item.gid">
+          <template v-for="(item, key) in tasksInfo.tasks" :key="item.gid" v-if="!loading">
             <div class="task">
               <div class="task-info">
                 <div class="task-info-wrapper">
                   <div class="task-file-name">
-                    <n-ellipsis :tooltip="{width: 'trigger'}">
+                    <n-ellipsis>
                       {{item.files[0].path}}
                     </n-ellipsis>
                   </div>
@@ -28,24 +36,49 @@
                   </div>
                 </div>
                 <div class="task-progress" style="width: 60px; margin-right: 15px;">
-                  <n-progress type="line" :percentage="Number((item.completedLength / item.totalLength * 100).toFixed(2))" processing indicator-placement="inside"></n-progress>
+                  <n-progress type="line" 
+                    :percentage="Number((item.completedLength / item.totalLength * 100).toFixed(2))" 
+                    :processing="item.completedLength < item.totalLength"
+                    :status="item.completedLength < item.totalLength ? 'default' : 'success'"
+                    indicator-placement="inside">
+                  </n-progress>
                 </div>
                 <n-space>
-                  <n-icon color="#306eff" @click="changeStatus(item)" v-if="item.status === 'active'">
+                  <n-icon color="#306eff" size="20" @click="changeStatus(item, 'pause')" v-if="item.status === 'active'">
                     <player-pause/>
                   </n-icon>
-                  <n-icon color="#306eff" @click="changeStatus(item)" v-else>
+                  <n-icon color="#306eff" size="20" @click="changeStatus(item, 'active')" v-else-if="item.status === 'paused'">
                     <player-play/>
+                  </n-icon>
+                  <n-icon color="#306eff" size="20" v-else-if="item.status === 'waiting'">
+                    <clock/>
+                  </n-icon>
+                  <n-icon color="#306eff" size="20" @click="changeStatus(item, 'retry')" v-else-if="item.status === 'error' || item.status === 'removed'">
+                    <refresh/>
+                  </n-icon>
+                  <n-icon color="#008000" size="20" v-else>
+                    <circle-check/>
+                  </n-icon>
+                  <n-icon color="#ff0000" size="20" @click="changeStatus(item, 'remove')">
+                    <circle-x/>
                   </n-icon>
                 </n-space>
               </div>
             </div>
           </template>
+          <div style="text-align: center;margin-top: 34px;margin-bottom: 50px;" v-else>
+            <n-spin size="small" style="vertical-align: middle;"/>加载中
+          </div>
         </n-scrollbar>
-      </div>
+      </n-card>
       <n-space>
-        <p class="bottom2" v-if="!hide" @click="hide = true">收起</p>
-        <p class="bottom3" v-if="!hide" @click="getTasks">刷新</p>
+        <p class="bottom" v-if="!hide" @click="taskSelect = 'active'" :style="taskSelect === 'active' ? 'color:orange' : 'color:black'" style="left: 0;">
+        下载({{tasksInfo?.actives||0}})</p>
+        <p class="bottom" v-if="!hide" @click="taskSelect = 'waiting'" :style="taskSelect === 'waiting' ? 'color:orange' : 'color:black'" style="left: 25%;">
+        暂停({{tasksInfo?.waitings||0}})</p>
+        <p class="bottom" v-if="!hide" @click="taskSelect = 'stopped'" :style="taskSelect === 'stopped' ? 'color:orange' : 'color:black'" style="left: 50%;">
+        停止({{tasksInfo?.stoppeds||0}})</p>
+        <p class="bottom" style="left: 75%;" v-if="!hide" @click="getTasks">刷新</p>
       </n-space>
     </div> 
   </div>
@@ -55,15 +88,18 @@
 import { ref } from '@vue/reactivity';
 import { onMounted, onUnmounted, watch } from '@vue/runtime-core'
 import http from '../utils/axios'
-import { NEllipsis, NScrollbar, NProgress, NIcon, NSpin, NSpace } from 'naive-ui'
+import { NEllipsis, NScrollbar, NProgress, NIcon, NSpin, NSpace, NEmpty, NCard, NButton } from 'naive-ui'
 import { byteConvert } from '../utils'
-import { PlayerPlay, PlayerPause } from '@vicons/tabler'
+import { PlayerPlay, PlayerPause, CircleX, Refresh, Clock, CircleCheck } from '@vicons/tabler'
 import aria2Api from '../api/aria2Api';
   const aria2Data = ref()
   const tasksList = ref()
+  const taskLoading = ref(true)
   const tasksInfo = ref({
     actives: 0,
     waitings: 0,
+    stoppeds: 0,
+    downloadSpeed: 0,
     tasks:<any>[]
   })
   const isSafari = ref(false)
@@ -71,55 +107,58 @@ import aria2Api from '../api/aria2Api';
   const hasTask = ref(0)
   const timeOut = ref()
   const hide = ref(true)
+  const taskSelect = ref('active')
   const pageToken = ref()
   
-  const changeStatus = (task:any) => {
-    console.debug('changeStatus')
-    if(task.status === 'active') {
-      if(isSafari.value) {
-        aria2Api.pauseIndirect(aria2Data.value.host, task.gid)
-          .then(res => {
-            if(res === task.gid) {
-              task.status = 'paused'
-            }
-          })
-          .catch(err => {
-            window.$message.error('控制失败')
-          })
-      } else {
+  const changeStatus = (task:any, action:string) => {
+    if(action === 'pause') {
+      if(task.status === 'active') {
         aria2Api.pause(aria2Data.value.host, task.gid)
-          .then(res => {
-            if(res === task.gid) {
-              task.status = 'paused'
-            }
-          })
-          .catch(err => {
-            console.error('yuhuhu')
-            window.$message.error('控制失败')
-          })
+        .then(res => {
+          if(res === task.gid) {
+            task.status = 'paused'
+          }
+        })
+        .catch(err => {
+          window.$message.error('控制失败')
+        })
       }
-    } else if(task.status === 'paused') {
-      if(isSafari.value) {
-        aria2Api.unpauseIndirect(aria2Data.value.host, task.gid)
-          .then(res => {
-            if(res === task.gid) {
-              task.status = 'active'
-            }
-          })
-          .catch(err => {
-            window.$message.error('控制失败')
-          })
-      } else {
+    } else if(action === 'active') {
+      if(task.status === 'paused') {
         aria2Api.unpause(aria2Data.value.host, task.gid)
+        .then(res => {
+          if(res === task.gid) {
+            task.status = 'active'
+          }
+        })
+        .catch(err => {
+          window.$message.error('控制失败')
+        })
+      }
+    } else if(action === 'remove') {
+      if(task.status === 'active' || task.status === 'paused' || task.status === 'waiting') {
+        aria2Api.remove(aria2Data.value.host, task.gid)
           .then(res => {
             if(res === task.gid) {
-              task.status = 'active'
+              getTasks()
+            }
+          })
+          .catch(err => {
+            window.$message.error('控制失败')
+          })
+      } else if(task.status === 'error' || task.status === 'removed' || task.status === 'complete') {
+        aria2Api.removeDownloadResult(aria2Data.value.host, task.gid)
+          .then(res => {
+            if(res === 'OK') {
+              getTasks()
             }
           })
           .catch(err => {
             window.$message.error('控制失败')
           })
       }
+    } else if(action === 'retry') {
+      //重试
     }
   }
   const scrollHandle = (e:any) =>  {
@@ -129,54 +168,97 @@ import aria2Api from '../api/aria2Api';
       }
     }
   }
+  const getActiveTasks = () => {
+    return aria2Api.tellActive(aria2Data.value.host)
+      .then(res => {
+        return res.map((task:any) => {
+          let path:string = task.files[0].path
+          let index = path.lastIndexOf('/')
+          task.files[0].path = path.substring(index + 1)
+          return task
+        })
+      })
+      .catch(error => {
+        console.error(JSON.stringify(error.response))
+        return []
+      })
+  }
+
+  const getWaitingTasks = () => {
+    return aria2Api.tellWaiting(aria2Data.value.host)
+      .then(res => {
+        return res.map((task:any) => {
+          let path:string = task.files[0].path
+          let index = path.lastIndexOf('/')
+          task.files[0].path = path.substring(index + 1)
+          return task
+        })
+      })
+      .catch(error => {
+        console.error(JSON.stringify(error.response))
+        return []
+      })
+  }
+  const getStoppedTasks = () => {
+    return aria2Api.tellStopped(aria2Data.value.host)
+      .then(res => {
+        return res
+          // .filter((task:any) => task.status != 'complete')
+          .sort((ta:any,tb:any) => {
+            if(ta.status === tb.status) {
+              return 0
+            } else if(ta.status == 'complete') {
+              return 1
+            } else if(tb.status == 'complete') {
+              return -1
+            } else {
+              return ta.status > tb.status ? 1 : -1
+            }
+          })
+          .map((task:any) => {
+            let path:string = task.files[0].path
+            let index = path.lastIndexOf('/')
+            task.files[0].path = path.substring(index + 1)
+            return task
+          })
+      })
+      .catch(error => {
+        console.error(JSON.stringify(error.response))
+        return []
+      })
+  }
+  const getGlobalStat = () => {
+    return aria2Api.getGlobalStat(aria2Data.value.host)
+  }
   const getTasks = async () => {
     loading.value = true
-    let tasks: any[] = []
-    console.log(isSafari.value)
-    if(isSafari.value) {
-      let activeTasks = await aria2Api.tellActiveIndirect(aria2Data.value.host)
-      console.log(activeTasks)
-      let waitingTasks = await aria2Api.tellWaitingIndirect(aria2Data.value.host)
-      if(activeTasks instanceof Array) {
-        tasks = tasks.concat(activeTasks.map(task => {
-          let path:string = task.files[0].path
-          let index = path.lastIndexOf('/')
-          task.files[0].path = path.substring(index + 1)
-          return task
-        }))
-        tasksInfo.value.actives = activeTasks.length
-      }
-      if(waitingTasks instanceof Array) {
-        tasks = tasks.concat(waitingTasks.map(task => {
-          let path:string = task.files[0].path
-          let index = path.lastIndexOf('/')
-          task.files[0].path = path.substring(index + 1)
-          return task
-        }))
-        tasksInfo.value.waitings = waitingTasks.length
-      }
-      tasksInfo.value.tasks = tasks
+
+    //get status
+    const statPromise = getGlobalStat()
+
+    let taskPromise = Promise.resolve([])
+
+    //getTask default actie
+    if(taskSelect.value === 'active') {
+      taskPromise = getActiveTasks()
+    } else if(taskSelect.value === 'waiting') {
+      taskPromise = getWaitingTasks()
     } else {
-      let activeTasks = await aria2Api.tellActive(aria2Data.value.host)
-      let waitingTasks = await aria2Api.tellWaiting(aria2Data.value.host)
-      if(activeTasks && waitingTasks) {
-        tasks = tasks.concat(activeTasks.map((task:any) => {
-            let path:string = task.files[0].path
-            let index = path.lastIndexOf('/')
-            task.files[0].path = path.substring(index + 1)
-            return task
-          }), 
-          waitingTasks.map((task:any) => {
-            let path:string = task.files[0].path
-            let index = path.lastIndexOf('/')
-            task.files[0].path = path.substring(index + 1)
-            return task
-          }))
-        tasksInfo.value.tasks = tasks
-        tasksInfo.value.actives = activeTasks.length
-        tasksInfo.value.waitings = waitingTasks.length
-      }
+      taskPromise = getStoppedTasks()
     }
+
+    const results = await Promise.all([statPromise, taskPromise])
+      .then(res => res)
+      .catch(err => [{ downloadSpeed: 0, numActive: 0, numWaiting: 0, numStopped: 0, numStoppedTotal: 0 }, []])
+    tasksInfo.value.actives = results[0].numActive
+    tasksInfo.value.waitings = results[0].numWaiting
+    tasksInfo.value.stoppeds = results[0].numStopped
+    tasksInfo.value.downloadSpeed = results[0].downloadSpeed
+
+    tasksInfo.value.tasks = results[1]
+    // setTimeout(() => {
+    //   loading.value = false
+    // }, 1000);
     loading.value = false
   }
   watch(hide, () => {
@@ -186,12 +268,10 @@ import aria2Api from '../api/aria2Api';
       getTasks()
     }
   })
+  watch(taskSelect, () => {
+    getTasks()
+  })
   onMounted(() => {
-    // var userAgent = navigator.userAgent
-    // if (userAgent.indexOf("Safari") > -1 && userAgent.indexOf("Macintosh") > -1 && userAgent.indexOf("Edg") === -1 && userAgent.indexOf("Chromme") === -1) {
-    //   isSafari.value = true
-    // }
-    isSafari.value = false
     let aria2 = JSON.parse(window.localStorage.getItem('pikpakAria2') || '{}')
     if(aria2.dir === undefined) {
       aria2.dir = true
@@ -260,41 +340,8 @@ import aria2Api from '../api/aria2Api';
 .bottom {
   cursor: pointer;
   position: absolute;
-  width: 100%;
+  width: 25%;
   height: 30px;
-  left: 0;
-  font-size: 14px;
-  line-height: 1.5;
-  text-align: center;
-  bottom: 0;
-  border-radius: 0 0 5px 5px;
-  background: #fff;
-  box-shadow: 0 -8px 8px #fff;
-  transition: color 0.3s ease;
-}
-
-.bottom2 {
-  cursor: pointer;
-  position: absolute;
-  width: 50%;
-  height: 30px;
-  left: 0;
-  font-size: 14px;
-  line-height: 1.5;
-  text-align: center;
-  bottom: 0;
-  border-radius: 0 0 5px 5px;
-  background: #fff;
-  box-shadow: 0 -8px 8px #fff;
-  transition: color 0.3s ease;
-}
-
-.bottom3 {
-  cursor: pointer;
-  position: absolute;
-  width: 50%;
-  height: 30px;
-  right: 0;
   font-size: 14px;
   line-height: 1.5;
   text-align: center;
