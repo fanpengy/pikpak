@@ -273,6 +273,26 @@
       </n-card>
     </n-modal>
 
+    <n-modal v-model:show="showAria2PushFail">
+      <n-card style="width: 600px;" title="推送失败，自己选择复制">
+        <template #header-extra>
+          <n-icon @click="showAria2PushFail = false">
+            <circle-x></circle-x>
+          </n-icon>
+        </template>
+        <n-form label-width="0" label-align="left" label-placement="left">
+          <n-form-item>
+            <n-input :value="aria2CopyValue.url"></n-input>
+            <n-button type="primary" @click="copy(aria2CopyValue.url)">复制</n-button>
+          </n-form-item>
+          <n-form-item>
+            <n-input :value="aria2CopyValue.command"></n-input>
+            <n-button type="primary" @click="copy(aria2CopyValue.command)">复制</n-button>
+          </n-form-item>
+        </n-form>
+      </n-card>
+    </n-modal>
+
   </div>
 </template>
 
@@ -640,7 +660,7 @@ import axios from 'axios';
       aria2Data.value = aria2
     }
     let optimize = JSON.parse(window.localStorage.getItem('pikpakOptimize') || '{}')
-    if(optimize.url) {
+    if(optimize?.url) {
       linkReplace.value.replace = true
       linkReplace.value.url = optimize.url
     }
@@ -688,6 +708,7 @@ import axios from 'axios';
   const showAddUrl = ref(false)
   const showCopy = ref(false)
   const showAriaOption = ref(false)
+  const showAria2PushFail = ref(false)
   const pushOrigin = ref(true)
   const pushReplace = ref(false)
   const linkReplace = ref({
@@ -807,6 +828,10 @@ import axios from 'axios';
   }
   const showCopyFail = ref(false)
   const copyValue = ref('')
+  const aria2CopyValue = ref({
+    url: '',
+    command: ''
+  })
   const copy = (value:string) => {
     nextTick(() => {
       const fakeElement = document.createElement('button')
@@ -917,21 +942,79 @@ import axios from 'axios';
     if(!aria2Dir.value && aria2Data.value.dir) {
       await getAria2Dir()
     }
+    // const postOne =  () => {
+    //   getFile(downFileList.value[0].id)
+    //     .then(async res => {
+    //       const data:any = downFileList.value.shift()
+    //       aria2Option(res, data.parent, false)
+    //       let media = aria2Config.value.mediaMap.get('链接')
+    //       if(aria2Config.value.mediaMap.size > 2 ) {
+    //         let flag = true
+    //         aria2Config.value.mediaMap.forEach((v,k,m) => {
+    //           if(k != '链接' && k != '原画' && flag) {
+    //               console.log('hit')
+    //               media = v
+    //               flag = false
+    //           }
+    //         })
+    //       }
+    //       //await aria2Post(res, data.parent)
+    //       if(linkReplace.value.replace) {
+    //         aria2PushDirect(media.replace, aria2Config.value.out)
+    //       } else {
+    //         aria2PushDirect(media.url, aria2Config.value.out)
+    //       }
+    //       if(nRef.value?.content) {
+    //         nRef.value.content = nRef.value?.content + '\r\n' + '推送' + data.parent + '/' + data.name + '成功'
+    //       }
+    //       if(downFileList.value.length) {
+    //         setTimeout(() => {
+    //           postOne()
+    //         }, 3000)
+    //       } else {
+    //         setTimeout(() => {
+    //           nRef.value?.destroy()
+    //           allLoding.value = false
+    //         }, 1000);
+    //       }
+    //     })
+    // }
     const postOne =  () => {
       getFile(downFileList.value[0].id)
         .then(async res => {
           const data:any = downFileList.value.shift()
           aria2Option(res, data.parent, false)
-          let media = aria2Config.value.mediaMap.get('链接')
-          //await aria2Post(res, data.parent)
-          if(linkReplace.value.replace) {
-            aria2PushDirect(media.replace, aria2Config.value.out)
-          } else {
-            aria2PushDirect(media.url, aria2Config.value.out)
+          // let media = aria2Config.value.mediaMap.get('链接')
+          let key = '链接'
+          if(aria2Config.value.mediaMap.size > 2 ) {
+            let flag = true
+            aria2Config.value.mediaMap.forEach((v,k,m) => {
+              if(k != '链接' && k != '原画' && flag) {
+                  console.log('hit')
+                  key = k
+                  flag = false
+              }
+            })
           }
+          //await aria2Post(res, data.parent)
+          // if(linkReplace.value.replace) {
+          //   aria2PushDirect(media.replace, aria2Config.value.out)
+          // } else {
+          //   aria2PushDirect(media.url, aria2Config.value.out)
+          // }
+          aria2Push(key, true)
           if(nRef.value?.content) {
             nRef.value.content = nRef.value?.content + '\r\n' + '推送' + data.parent + '/' + data.name + '成功'
           }
+        })
+        .catch(error => {
+          const data:any = downFileList.value.shift()
+          if(nRef.value?.content) {
+            nRef.value.content = nRef.value?.content + '\r\n' + '推送' + data.parent + '/' + data.name + '失败'
+          }
+          downFileList.value.push(data)
+        })
+        .finally(() => {
           if(downFileList.value.length) {
             setTimeout(() => {
               postOne()
@@ -983,27 +1066,8 @@ import axios from 'axios';
   }
   const aria2Dir = ref()
   const getAria2Dir = () => {
-    let postData:any = {
-        id:'pikpak',
-        jsonrpc:'2.0',
-        method:'aria2.getGlobalOption',
-        params:[
-        ]
-    }
-    if(aria2Data.value.token) {
-      postData.params.splice(0, 0, 'token:' + aria2Data.value.token)
-    }
-    fetch(aria2Data.value.host, {
-        method: 'POST',
-        body: JSON.stringify(postData),
-        headers: new Headers({
-        'Content-Type': 'application/json'
-      })
-    })
-      .then(response => response.json())
-      .then(res => {
-        aria2Dir.value = res?.result?.dir || ''
-      })
+    aria2Api.getGlobalOption(aria2Data.value)
+      .then(res => aria2Dir.value = res?.dir || '')
   }
   const aria2Option = (res:any, dir?:string, show?:boolean) => {
 
@@ -1036,9 +1100,12 @@ import axios from 'axios';
     }
   }
 
-  const aria2Push = (key:string) => {
+  const aria2Push = (key:string, replace?:boolean) => {
     let media = aria2Config.value.mediaMap.get(key)
     let url = pushReplace.value ? media.replace : media.url
+    if(replace) {
+      url = linkReplace.value.replace ? media.replace : media.url
+    }
     let name:string = aria2Config.value.out
     // const out = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00').replace(/.mp4/g, 's.mp4')
     // const out_h264 = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00')
@@ -1050,88 +1117,25 @@ import axios from 'axios';
     if(name.search(/.+\..+@/g) != -1) {
       name = name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00')
     }
-    //mpegts
-    if(media.type.search(/mpegts/g) !== -1) {
+    //mpegts and ts
+    if(media.type.search(/ts/g) !== -1) {
       name = name.replace(/.mp4/g, 's.mp4')
     }
-    // if(safari.value) {
-    //   aria2PushIndirect(url, name)
-    // } else {
-    //   aria2PushDirect(url, name)
-    // }
     aria2PushDirect(url, name)
   }
 
-  const aria2PushDirect = (url:string, name:string) => {
-    let postData:any = {
-        id:'pikpak',
-        jsonrpc:'2.0',
-        method:'aria2.addUri',
-        params:[
-            [url],
-            {
-              out: name
-            }
-        ]
-    }
-    if(aria2Config.value.dir && aria2Dir.value) {
-      postData.params[1].dir = aria2Dir.value + '/' + aria2Config.value.dir
-    }
-    if(aria2Data.value.token) {
-      postData.params.splice(0, 0, 'token:' + aria2Data.value.token)
-    }
-    fetch(aria2Data.value.host, {
-        method: 'POST',
-        body: JSON.stringify(postData),
-        headers: new Headers({
-        'Content-Type': 'application/json'
-      })
-    })
-      .then(response => response.json())
-      .then(res => {
-        if(res.error && res.error.message) {
-          window.$message.error(res.error.message)
-          copy(url)
-        } else if(res.result) {
-          window.$message.success('推送成功')
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error)
-        window.$message.error('推送失败')
-        copy(url)
-      })
-  }
-
-  const aria2PushIndirect = (url:string, name:string) => {
-    aria2Api.push(url, aria2Config.value.out, aria2Data.value.host)
-      .then((res:any) => {
-        window.$message.success('推送成功! Yep!')
-      })
-      .catch( err => {
-        console.log(err)
-        window.$message.error('推送失败，拷贝命令')
-        let postData:any = {
-          id:'pikpak',
-          jsonrpc:'2.0',
-          method:'aria2.addUri',
-          params:[
-              [url],
-              {
-                out: name
-              }
-          ]
-        }
-        if(aria2Config.value.dir && aria2Dir.value) {
-          postData.params[1].dir = aria2Dir.value + '/' + aria2Config.value.dir
-        }
-        if(aria2Data.value.token) {
-          postData.params.splice(0, 0, 'token:' + aria2Data.value.token)
-        }
-        const curl_origin = "curl aria2host -X POST -d 'postdata' --header 'Content-Type: application/json'"
-        const curl = curl_origin.replace('aria2host', aria2Data.value.host).replace('postdata', JSON.stringify(postData))
-        copy(curl)
-      })
+  const aria2PushDirect = (uri:string, name:string) => {
+    
+      let dir = aria2Config.value.dir && aria2Dir.value ? aria2Dir.value + '/' + aria2Config.value.dir : undefined
+      aria2Api.addUri(aria2Data.value, name, [uri], dir)
+        .then(res => window.$message.success('推送成功'))
+        .catch(error => {
+          aria2CopyValue.value.url = uri
+          const curl_origin = "curl aria2host -X POST -d 'postdata' --header 'Content-Type: application/json'"
+          aria2CopyValue.value.command = curl_origin.replace('aria2host', aria2Data.value.host).replace('postdata', JSON.stringify(error.postData))
+          window.$message.error('推送失败')
+          showAria2PushFail.value = true
+        })
   }
 
   const aria2Post = (res:any, dir?:string) => {

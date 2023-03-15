@@ -13,7 +13,22 @@
           速度:{{byteConvert(tasksInfo?.downloadSpeed||0)}}
         </div>
       </div>
-      <n-card class="task-list">
+      <n-card class="task-list" :title="labelMap.get(taskSelect)">
+        <template #header-extra>
+          <n-space>
+            <n-popconfirm
+              @positive-click="clearStoppedTasks"
+              v-if="taskSelect === 'stopped'"
+            >
+              <template #trigger>
+                <n-button size="small" :text="true" :focusable="false">清空</n-button>
+              </template>
+              确定清空
+            </n-popconfirm>
+            <!-- <n-button size="small" :text="true" :focusable="false" @click="clearStoppedTasks" v-if="taskSelect === 'stopped'">清空</n-button> -->
+            <n-button size="small" :text="true" :focusable="false" @click="getTasks">刷新</n-button>
+          </n-space>
+        </template>
         <n-empty description="没有任务" style="margin-top: 20px;margin-bottom: 30px;" v-if="tasksInfo.tasks.length === 0 && !loading"/>
         <n-scrollbar style="max-height: 400px;"  @scroll="scrollHandle">
           <template v-for="(item, key) in tasksInfo.tasks" :key="item.gid" v-if="!loading">
@@ -59,9 +74,14 @@
                   <n-icon color="#008000" size="20" v-else>
                     <circle-check/>
                   </n-icon>
-                  <n-icon color="#ff0000" size="20" @click="changeStatus(item, 'remove')">
-                    <circle-x/>
-                  </n-icon>
+                  <n-popconfirm @positive-click="changeStatus(item, 'remove')" placement="right">
+                    <template #trigger>
+                      <n-icon color="#ff0000" size="20">
+                        <circle-x/>
+                      </n-icon>
+                    </template>
+                    确定删除？
+                  </n-popconfirm>
                 </n-space>
               </div>
             </div>
@@ -73,12 +93,12 @@
       </n-card>
       <n-space>
         <p class="bottom" v-if="!hide" @click="taskSelect = 'active'" :style="taskSelect === 'active' ? 'color:orange' : 'color:black'" style="left: 0;">
-        下载({{tasksInfo?.actives||0}})</p>
+        {{labelMap.get('active')}}({{tasksInfo?.actives||0}})</p>
         <p class="bottom" v-if="!hide" @click="taskSelect = 'waiting'" :style="taskSelect === 'waiting' ? 'color:orange' : 'color:black'" style="left: 25%;">
-        暂停({{tasksInfo?.waitings||0}})</p>
+        {{labelMap.get('waiting')}}({{tasksInfo?.waitings||0}})</p>
         <p class="bottom" v-if="!hide" @click="taskSelect = 'stopped'" :style="taskSelect === 'stopped' ? 'color:orange' : 'color:black'" style="left: 50%;">
-        停止({{tasksInfo?.stoppeds||0}})</p>
-        <p class="bottom" style="left: 75%;" v-if="!hide" @click="getTasks">刷新</p>
+        {{labelMap.get('stopped')}}({{tasksInfo?.stoppeds||0}})</p>
+        <p class="bottom" style="left: 75%;" v-if="!hide" @click="hide = !hide">收起</p>
       </n-space>
     </div> 
   </div>
@@ -88,13 +108,11 @@
 import { ref } from '@vue/reactivity';
 import { onMounted, onUnmounted, watch } from '@vue/runtime-core'
 import http from '../utils/axios'
-import { NEllipsis, NScrollbar, NProgress, NIcon, NSpin, NSpace, NEmpty, NCard, NButton } from 'naive-ui'
+import { NEllipsis, NScrollbar, NProgress, NIcon, NSpin, NSpace, NEmpty, NCard, NButton, NPopconfirm } from 'naive-ui'
 import { byteConvert } from '../utils'
 import { PlayerPlay, PlayerPause, CircleX, Refresh, Clock, CircleCheck } from '@vicons/tabler'
 import aria2Api from '../api/aria2Api';
   const aria2Data = ref()
-  const tasksList = ref()
-  const taskLoading = ref(true)
   const tasksInfo = ref({
     actives: 0,
     waitings: 0,
@@ -109,11 +127,16 @@ import aria2Api from '../api/aria2Api';
   const hide = ref(true)
   const taskSelect = ref('active')
   const pageToken = ref()
+  const labelMap = new Map([
+    ['active', '下载'],
+    ['waiting', '暂停'],
+    ['stopped', '停止']
+  ])
   
   const changeStatus = (task:any, action:string) => {
     if(action === 'pause') {
       if(task.status === 'active') {
-        aria2Api.pause(aria2Data.value.host, task.gid)
+        aria2Api.pause(aria2Data.value, task.gid)
         .then(res => {
           if(res === task.gid) {
             task.status = 'paused'
@@ -125,7 +148,7 @@ import aria2Api from '../api/aria2Api';
       }
     } else if(action === 'active') {
       if(task.status === 'paused') {
-        aria2Api.unpause(aria2Data.value.host, task.gid)
+        aria2Api.unpause(aria2Data.value, task.gid)
         .then(res => {
           if(res === task.gid) {
             task.status = 'active'
@@ -137,7 +160,7 @@ import aria2Api from '../api/aria2Api';
       }
     } else if(action === 'remove') {
       if(task.status === 'active' || task.status === 'paused' || task.status === 'waiting') {
-        aria2Api.remove(aria2Data.value.host, task.gid)
+        aria2Api.remove(aria2Data.value, task.gid)
           .then(res => {
             if(res === task.gid) {
               getTasks()
@@ -147,7 +170,7 @@ import aria2Api from '../api/aria2Api';
             window.$message.error('控制失败')
           })
       } else if(task.status === 'error' || task.status === 'removed' || task.status === 'complete') {
-        aria2Api.removeDownloadResult(aria2Data.value.host, task.gid)
+        aria2Api.removeDownloadResult(aria2Data.value, task.gid)
           .then(res => {
             if(res === 'OK') {
               getTasks()
@@ -159,6 +182,9 @@ import aria2Api from '../api/aria2Api';
       }
     } else if(action === 'retry') {
       //重试
+      if(task.status === 'error' || task.status === 'removed') {
+        retryTask(task)
+      }
     }
   }
   const scrollHandle = (e:any) =>  {
@@ -169,7 +195,7 @@ import aria2Api from '../api/aria2Api';
     }
   }
   const getActiveTasks = () => {
-    return aria2Api.tellActive(aria2Data.value.host)
+    return aria2Api.tellActive(aria2Data.value)
       .then(res => {
         return res.map((task:any) => {
           let path:string = task.files[0].path
@@ -179,13 +205,13 @@ import aria2Api from '../api/aria2Api';
         })
       })
       .catch(error => {
-        console.error(JSON.stringify(error.response))
+        console.error(error)
         return []
       })
   }
 
   const getWaitingTasks = () => {
-    return aria2Api.tellWaiting(aria2Data.value.host)
+    return aria2Api.tellWaiting(aria2Data.value)
       .then(res => {
         return res.map((task:any) => {
           let path:string = task.files[0].path
@@ -195,40 +221,49 @@ import aria2Api from '../api/aria2Api';
         })
       })
       .catch(error => {
-        console.error(JSON.stringify(error.response))
+        console.error(error)
         return []
       })
   }
   const getStoppedTasks = () => {
-    return aria2Api.tellStopped(aria2Data.value.host)
+    [].concat
+    return aria2Api.tellStopped(aria2Data.value)
       .then(res => {
-        return res
-          // .filter((task:any) => task.status != 'complete')
-          .sort((ta:any,tb:any) => {
-            if(ta.status === tb.status) {
-              return 0
-            } else if(ta.status == 'complete') {
-              return 1
-            } else if(tb.status == 'complete') {
-              return -1
-            } else {
-              return ta.status > tb.status ? 1 : -1
-            }
-          })
+        let errors = res.filter((task:any) => task.status === 'error')
+        let others = res.filter((task:any) => task.status != 'error')
+        return errors.concat(others)
           .map((task:any) => {
             let path:string = task.files[0].path
             let index = path.lastIndexOf('/')
             task.files[0].path = path.substring(index + 1)
             return task
-          })
+          }).reverse()
+        // return res
+        //   .sort((ta:any,tb:any) => {
+        //     if(ta.status === tb.status) {
+        //       return 0
+        //     } else if(ta.status == 'complete') {
+        //       return 1
+        //     } else if(tb.status == 'complete') {
+        //       return -1
+        //     } else {
+        //       return ta.status > tb.status ? 1 : -1
+        //     }
+        //   })
+        //   .map((task:any) => {
+        //     let path:string = task.files[0].path
+        //     let index = path.lastIndexOf('/')
+        //     task.files[0].path = path.substring(index + 1)
+        //     return task
+        //   })
       })
       .catch(error => {
-        console.error(JSON.stringify(error.response))
+        console.error(error)
         return []
       })
   }
   const getGlobalStat = () => {
-    return aria2Api.getGlobalStat(aria2Data.value.host)
+    return aria2Api.getGlobalStat(aria2Data.value)
   }
   const getTasks = async () => {
     loading.value = true
@@ -260,6 +295,52 @@ import aria2Api from '../api/aria2Api';
     //   loading.value = false
     // }, 1000);
     loading.value = false
+  }
+
+  const clearStoppedTasks = () => {
+    if(taskSelect.value === 'stopped') {
+      aria2Api.purgeDownloadResult(aria2Data.value)
+          .then(res => {
+            if(res === 'OK') {
+              getTasks()
+            }
+          })
+          .catch(err => {
+            window.$message.error('清空失败')
+          })
+    }
+  }
+  const retryTask = (task:any) => {
+    const statusParam = {
+      methodName: 'aria2.tellStatus',
+      params: [task.gid]
+    }
+    const optionParam = {
+      methodName: 'aria2.getOption',
+      params: [task.gid]
+    }
+    aria2Api.multicall(aria2Data.value, [statusParam, optionParam])
+      .then(res => {
+        let status = res[0][0]
+        let option = res[1][0]
+        aria2Api.addUri(aria2Data.value, option.out,status.files[0].uris.map((uri:any) => uri.uri))
+          .then(res => {
+            if(res) {
+              aria2Api.removeDownloadResult(aria2Data.value, task.gid)
+                .then(res => {
+                  if(res) {
+                    getTasks()
+                  }
+                })
+            }
+          })
+          .catch(err => {
+            window.$message.error('重试失败')
+          })
+          .finally(() => {
+            getTasks()
+          })
+      })
   }
   watch(hide, () => {
     if(hide.value && timeOut.value) {
@@ -293,7 +374,7 @@ import aria2Api from '../api/aria2Api';
 <style scoped>
 .container {
   position: fixed;
-  width: 375px;
+  width: 529px;
   right: 439px;
   bottom: 28px;
 }

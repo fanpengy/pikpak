@@ -91,9 +91,6 @@
           <n-form-item label="自动账号：">
             <n-switch v-model:value="optimizeData.accountAutomatic"></n-switch>
           </n-form-item>
-          <n-form-item label="本地账号：" v-if="optimizeData.accountAutomatic">
-            <n-switch v-model:value="optimizeData.accountLocal"></n-switch>
-          </n-form-item>
           <n-form-item label="密匙：" v-if="optimizeData.accountAutomatic">
             <n-input v-model:value="optimizeData.key"></n-input>
           </n-form-item>
@@ -160,8 +157,7 @@ const optimizeData = ref({
   accountAutomatic: false,
   key: undefined,
   aria2Host: '',
-  accountHost: '',
-  accountLocal: true
+  accountHost: ''
 })
 const aesData = ref({
   origin: '',
@@ -226,7 +222,7 @@ const saveOptimize = () => {
   } 
   if (optimizeData.value.accountAutomatic && !optimizeData.value.key) {
     window.$message.error('保存失败，请填写密匙！')
-  } else if (optimizeData.value.accountAutomatic && !optimizeData.value.accountLocal && !optimizeData.value.accountHost) {
+  } else if (optimizeData.value.accountAutomatic && !optimizeData.value.accountHost) {
     window.$message.error('保存失败，请填写账号服务地址！')
   } else {
     window.localStorage.setItem('pikpakOptimize', JSON.stringify(optimizeData.value))
@@ -294,7 +290,7 @@ onMounted(() => {
   if(aria2.host) {            
     aria2Data.value = aria2
   }
-  if(optimize.url || optimize.accountAutomatic || optimize.aria2Host) {
+  if(optimize?.url || optimize?.accountAutomatic || optimize?.aria2Host) {
     optimizeData.value = optimize
   }
   let login = JSON.parse(window.localStorage.getItem('pikpakLoginData') || '{}')

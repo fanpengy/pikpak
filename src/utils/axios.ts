@@ -73,26 +73,19 @@ instance.interceptors.response.use(response => {
         if(response?.data?.error === 'task_daily_create_limit') {
           const login = JSON.parse(window.localStorage.getItem('pikpakLogin') || '{}')
           const optimize = JSON.parse(localStorage.getItem('pikpakOptimize') || '{}')
-          if(optimize.accountAutomatic) {
+          if(optimize?.accountAutomatic) {
             window.$message.warning((response?.data?.error_description || '出错了') + ' 尝试切换账号')
             const accountId = login.id ? login.id : -1
             let account:any = {}
-            if(!optimize.accountLocal) {
-              if(accountId > -1) {
-                let result = await usedAccount(accountId)
-                if(result === 0) {
-                  window.$message.error('处理账号失败')
-                } else {
-                  account = await getAccount()
-                }
+            if(accountId > -1) {
+              let result = await usedAccount(accountId)
+              if(result === 0) {
+                window.$message.error('处理账号失败')
               } else {
                 account = await getAccount()
               }
             } else {
-                if(accountId > -1) {
-                  usedLocalAccount(accountId)
-                }
-                account = getLocalAccount()
+              account = await getAccount()
             }
             if(account.id && account.id > 0) {
               window.$message.success('获取账号成功: ' + account.id + '，尝试登陆')
@@ -171,10 +164,10 @@ instance2.interceptors.request.use(request => {
 
 const instance3 = axios.create({})
 instance3.interceptors.request.use(request => {
-  var url = request.url
+  var url = request?.url
   const optimize = JSON.parse(localStorage.getItem('pikpakOptimize') || '{}')
-  if(optimize.accountAutomatic && !optimize.accountLocal) {
-    if(url && !url.startsWith('https://localhost:3000')) {
+  if(url && optimize?.accountAutomatic) {
+    if(!url.startsWith('https://localhost:3000')) {
       //https://encryptuyhasiuhsiusdecrypt/account/get
       var start = url.indexOf('encrypt') + 7
       var end = url.indexOf('decrypt')
@@ -188,48 +181,24 @@ instance3.interceptors.request.use(request => {
         request.url = proxyArray[index] + '/' + request.url
       }
     } else {
-      request.url = request.url?.replace("localhost",optimize.accountHost)
+      url = url.replace("localhost:3000",optimize.accountHost)
+      if(optimize.accountHost.search(/:/g) === -1) {
+        const proxyArray = JSON.parse(window.localStorage.getItem('proxy') || '[]')
+        if (proxyArray.length > 0) {
+          const index = Math.floor((Math.random() * proxyArray.length))
+          url = proxyArray[index] + '/' + url
+        }
+      }
+      request.url = url
     }
   }
-  return request
-})
-
-const instance4 = axios.create({})
-instance4.interceptors.request.use(request => {
-  var url = request.url
-  const optimize = JSON.parse(localStorage.getItem('pikpakOptimize') || '{}')
-  if(url && !url.startsWith('https://localhost:8081')) {
-      //https://encryptuyhasiuhsiusdecrypt/api/account_get
-      var start = url.indexOf('encrypt') + 7
-      var end = url.indexOf('decrypt')
-      var encrypted = url.substring(start, end)
-      var domain = aes.decrypt(encrypted, optimize.key)
-      request.url = 'https://' + domain + url.substring(end + 7)
-    } else if(optimize.aria2Host) {
-      request.url = request.url?.replace("localhost",optimize.aria2Host)
-    }
   return request
 })
 
 const usedAccount = async (accountId:number) => {
-  let accountsData = JSON.parse(window.localStorage.getItem('pikpakAccounts') || '{}')
-  //判断accountsData.stamp，大于当前时间以accountsData.id为准
-  let id = accountId
-  let now = new Date()
-  if(accountsData.stamp > now.getTime()) {
-    if(accountsData.id > accountId) {
-      id = accountsData.id
-    }
-  } else {
-    now.setHours(0,0,0,0)
-    let stamp = now.getTime() + 86400000
-    accountsData.stamp = stamp
-  }
-  return await accountApi.use(id)
+    return await accountApi.use(accountId)
     .then(res => {
-      accountsData.id = id
-      window.localStorage.setItem('pikpakAccounts', JSON.stringify(accountsData))
-      return id
+      return accountId
     })
     .catch(err => {
       console.log(err)
@@ -255,45 +224,6 @@ const getAccount = async () => {
   })
 }
 
-const usedLocalAccount = (accountId:number) => {
-  let accountsData = JSON.parse(window.localStorage.getItem('pikpakAccounts') || '{}')
-  let id = accountId
-  let now = new Date()
-  if(accountsData.stamp > now.getTime()) {
-    if(accountsData.id > accountId) {
-      id = accountsData.id
-    }
-  } else {
-    now.setHours(0,0,0,0)
-    let stamp = now.getTime() + 86400000
-    accountsData.stamp = stamp
-  }
-  accountsData.id = id
-  window.localStorage.setItem('pikpakAccounts', JSON.stringify(accountsData))
-}
-
-const getLocalAccount = () => {
-  let account:any = {}
-  let results = <any>[]
-  let accountsData = JSON.parse(window.localStorage.getItem('pikpakAccounts') || '{}')
-  if(!accountsData.stamp) {
-    return account
-  }
-  let now = new Date()
-  if(accountsData.stamp > now.getTime()) {
-    results = accountsData.accounts.sort((a:any,b:any) => a.id - b.id).filter((a:any) => a.id > accountsData.id)
-  } else {
-    results = accountsData.accounts.sort((a:any,b:any) => a.id - b.id).filter((a:any) => a.id > 0)
-  }
-  if(results.length > 0) {
-    account = results[0]
-  } else {
-    window.$message.error('没有可用账号')
-  }
-  return account
-}
-
 export const notionHttp = instance2
 export const accountClient = instance3
-export const aria2Client = instance4
 export default instance
