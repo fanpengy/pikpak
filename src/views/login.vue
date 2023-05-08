@@ -11,13 +11,20 @@
       <div class="login-box">
         <n-form label-align="left" label-placement="left" label-width="0" class="login-form">
           <n-form-item label="">
-            <n-input v-model:value="loginData.username" placeholder="请输入邮箱"></n-input>
+            <n-input v-model:value="loginData.username" placeholder="请输入邮箱" v-if="!select"/>
+            <n-select
+              v-model:value="selectAccountId"
+              placeholder="请选择账户"
+              :options = "accountOptions"
+              v-else
+            />
           </n-form-item>
           <n-form-item label="">
             <n-input v-model:value="loginData.password" placeholder="请输入密码" @keyup.enter="loginPost" type="password" show-password-on="mousedown"></n-input>
           </n-form-item>
           <n-form-item label="">
             <n-checkbox v-model:checked="remember" @update:checked="showMessage">记住登陆</n-checkbox>
+            <n-checkbox v-model:checked="select" @update:checked="selectChange" v-if="optimizeData?.accountAutomatic && accounts?.length">选择账号</n-checkbox>
           </n-form-item>
           <n-form-item>
             <n-button type="primary" class="block" :loading="loading" @click="loginPost">登陆</n-button>
@@ -59,8 +66,8 @@
 
 <script setup lang='ts'>
 import { ref } from '@vue/reactivity';
-import { onMounted} from '@vue/runtime-core'
-import { NForm, NFormItem, NInput, NButton, useMessage, NCheckbox, useDialog, NTooltip, NIcon, NSpace } from 'naive-ui'
+import { onMounted, watch} from '@vue/runtime-core'
+import { NForm, NFormItem, NInput, NButton, useMessage, NCheckbox, useDialog, NTooltip, NIcon, NSpace, NSelect } from 'naive-ui'
 import http from '../utils/axios'
 import { useRoute, useRouter } from 'vue-router'
 import { BrandGoogle, Phone } from '@vicons/tabler'
@@ -71,6 +78,9 @@ const loginData = ref({
   username: '',
   password: ''
 })
+const selectAccountId = ref(null)
+const accounts = ref<any>([])
+const accountOptions = ref<any>([])
 const route  = useRoute()
 const optimizeData = ref()
 const loading = ref(false)
@@ -80,6 +90,8 @@ onMounted(() => {
     let optimize = JSON.parse(window.localStorage.getItem('pikpakOptimize') || '{}')
     if(optimize?.accountAutomatic) {
       optimizeData.value = optimize
+      accounts.value = getAllAccounts()
+      console.log(accounts.value)
     }
 })
 const loginPost = () => {
@@ -164,7 +176,64 @@ const loginPostDirect = async () => {
   }
   
 }
+
+const getAllAccounts = () => {
+  if(optimizeData.value?.accountAutomatic) {
+    accountApi.queryAll()
+    .then((res:any) => {
+      accounts.value =  res.data
+    })
+    .catch(error => {
+        console.error(error.response)
+      })
+  }
+}
+const selectChange = () => {
+  if(select.value) {
+    // accountOptions.value = [
+    //   {
+    //     label: '1ha',
+    //     value: 1,
+    //     style: {
+    //       color: 'red'
+    //     }
+    //   },
+    //   {
+    //     label: '2',
+    //     value: 2
+    //   }
+    // ]
+    accountOptions.value = accounts.value.map((account:any) => {
+      var option:any = {}
+      option.label = aes.decrypt(account.email, optimizeData.value.key)
+      option.value = account.id
+      if(account.status) {
+        option.style = {
+          color: 'red'
+        }
+      }
+      return option
+    })
+  } else {
+    loginData.value = {
+      username: '',
+      password: ''
+    }
+    selectAccountId.value = null
+  }
+}
+watch(selectAccountId, () => {
+  if(selectAccountId.value) {
+    const results = accounts.value.filter((account:any) => account.id === selectAccountId.value)
+    if(results.length > 0) {
+      const account = results[0]
+      loginData.value.username = aes.decrypt(account.email, optimizeData.value.key)
+      loginData.value.password = aes.decrypt(account.password, optimizeData.value.key)
+    }
+  }
+})
 const remember = ref(false)
+const select = ref(false)
 const dialog = useDialog()
 const showMessage = () => {
   if(remember.value) {
@@ -187,6 +256,7 @@ const getApk = () => {
       window.open(res.data.apk_url)
     })
 }
+
 </script>
 
 <style >

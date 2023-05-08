@@ -17,7 +17,9 @@
       </a>
       <n-menu :options="menuOptions" :value="String(route.name)" @update:value="goRoute"></n-menu>
       <div class="content-bottom" v-if="!collapsed">
-        {{byteConvert(aboutInfo?.quota.usage)}} / {{byteConvert(aboutInfo?.quota.limit)}} <n-text type="primary" @click="showCode = true">会员码</n-text> <n-icon @click="getInfo"><refresh/></n-icon>
+        {{byteConvert(aboutInfo?.quota.usage)}} / {{byteConvert(aboutInfo?.quota.limit)}} <n-text type="primary" @click="showCode = true">会员码 </n-text> 
+        <n-icon @click="getInfo"><refresh/></n-icon>
+        <n-icon @click="markAccount"><target/></n-icon>
         <n-progress 
           v-if="aboutInfo?.quota"
           type="line"
@@ -86,8 +88,9 @@
 import { ref } from '@vue/reactivity';
 import { h, onMounted, watch } from '@vue/runtime-core';
 import { NLayout, NLayoutSider, NLayoutContent, NMenu, MenuOption, NIcon, NProgress, NText, NModal, NCard, NInput, NButton, NScrollbar, NTime, NTooltip, useDialog } from 'naive-ui'
-import { File, Trash, CircleX, Logout, Settings, Share, Copy, Video, Camera, Refresh } from '@vicons/tabler'
+import { File, Trash, CircleX, Logout, Settings, Share, Copy, Video, Camera, Refresh, Target } from '@vicons/tabler'
 import http from '../../utils/axios'
+import accountApi from '../../api/accountApi'
 import { byteConvert } from '../../utils'
 import { useRoute, useRouter } from 'vue-router'
   const collapsed = ref(false)
@@ -174,6 +177,24 @@ import { useRoute, useRouter } from 'vue-router'
     getUserInfo()
     getAbout()
   }
+  const markAccount = () => {
+    const login = JSON.parse(window.localStorage.getItem('pikpakLogin') || '{}')
+    const id = login.id ? login.id : -1
+    if(id === -1) {
+      window.$message.error('当前账号不支持此操作！')
+      return
+    }
+    accountApi.use(id)
+    .then(res => {
+      //log out
+      logoutPost()
+    })
+    .catch(err => {
+      console.error(err.response)
+      window.$message.error('操作账号失败')
+    })
+  }
+
   const code = ref()
   const showCode = ref(false)
   const postCode = () => {
