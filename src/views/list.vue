@@ -477,10 +477,14 @@ import axios from 'axios';
                     fileInfo.value.name = res.data.name
                     if(row.mime_type.indexOf('video') != -1) {
                       fileInfo.value.web_content_link = replaceUrl(res.data.thumbnail_link || res.data.icon_link)
+                      //在这里调起
+                      //window.open('iina://weblink?url=' + encodeURIComponent(res.data.web_content_link))
+                      window.location.href = 'iina://weblink?url=' + encodeURIComponent(res.data.web_content_link)
+                      
                     } else {
                       fileInfo.value.web_content_link = replaceUrl(res.data.web_content_link)
                     }
-                    showImage.value = true
+                    //showImage.value = true
                   })
               }
             }
@@ -1119,7 +1123,12 @@ import axios from 'axios';
     }
     //mpegts and ts
     if(media.type.search(/ts/g) !== -1) {
-      name = name.replace(/.mp4/g, 's.mp4')
+      const dotIndex = name.lastIndexOf('.')
+      if(dotIndex > -1) {
+        const prefix = name.substring(0, dotIndex)
+        const postfix = name.substring(dotIndex + 1)
+        name = prefix + 'pikpak.' + postfix
+      }
     }
     aria2PushDirect(url, name)
   }

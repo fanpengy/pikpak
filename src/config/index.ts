@@ -7,8 +7,10 @@ export const proxy = [
   'https://cc123.cf',
   'https://cf-api.xswd.cf',
   // 'https://pikpak.arielherself.xyz',
+  // 1
   'https://f.nxcloud.uk',
   'https://wkr.btstream.net',
+  //1
   'https://dns.firmant.me',
   // 'https://p.emobiz.cn',
   'https://pikpak.yang-s.online',
