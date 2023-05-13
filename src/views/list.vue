@@ -250,6 +250,7 @@
               <n-input-group>
                 <n-input :value="pushReplace ? item[1].replace : item[1].url"></n-input>
                 <n-button type="primary" @click="aria2Push(item[0])">推送</n-button>
+                <n-button type="primary" @click="preview(item[0])">预览</n-button>
               </n-input-group>
             </n-form-item>
           </template>
@@ -1185,6 +1186,15 @@ import axios from 'axios';
         }
       })
       .catch(error => console.error('Error:', error))
+  }
+  const preview = (key:string, replace?:boolean) => {
+    let media = aria2Config.value.mediaMap.get(key)
+    let url = pushReplace.value ? media.replace : media.url
+    if(replace) {
+      url = linkReplace.value.replace ? media.replace : media.url
+    }
+    window.location.href = 'iina://weblink?url=' + encodeURIComponent(url)
+    
   }
   const scrollHandle = (e:any) =>  {
     if(e.target.offsetHeight + e.target.scrollTop >= e.target.scrollHeight - 30) {
