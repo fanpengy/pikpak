@@ -7,9 +7,10 @@
 <script setup lang="ts">
 import axios from 'axios';
 import http from '../utils/axios'
+import { loginStore } from '../utils/localstore' 
 
   const invite = () => {
-    const loginData = JSON.parse(window.localStorage.getItem('pikpakLogin') || '{}')
+    const loginData = loginStore.getLoginInfo()
     axios.get('https://invite.z7.workers.dev/' + loginData.sub, {
       headers: {
         'authorization': loginData.token_type + ' ' + loginData.access_token

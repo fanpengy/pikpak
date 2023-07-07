@@ -313,6 +313,7 @@ import streamSaver from 'streamsaver'
 import { DropdownMixedOption } from 'naive-ui/lib/dropdown/src/interface'
 import aria2Api from '../api/aria2Api';
 import axios from 'axios';
+import { optimizeStore, aria2Store, configStore } from '../utils/localstore'
   const filesList = ref()
   const safari = ref(false)
   const route = useRoute()
@@ -657,24 +658,20 @@ import axios from 'axios';
     if (userAgent.indexOf("Safari") > -1 && userAgent.indexOf("Macintosh") > -1 && userAgent.indexOf("Edg") === -1 && userAgent.indexOf("Chromme") === -1) {
       safari.value = true
     }
-    let aria2 = JSON.parse(window.localStorage.getItem('pikpakAria2') || '{}')
+    let aria2 = aria2Store.getAria2Data()
     if(aria2.dir === undefined) {
       aria2.dir = true
     }
     if(aria2.host) {
       aria2Data.value = aria2
     }
-    let optimize = JSON.parse(window.localStorage.getItem('pikpakOptimize') || '{}')
-    if(optimize?.url) {
+    let optimize = optimizeStore.getOptimizeData()
+    if(optimize?.replaceUrl) {
       linkReplace.value.replace = true
-      linkReplace.value.url = optimize.url
+      linkReplace.value.url = optimize.replaceUrl
     }
-    const proxyArray = JSON.parse(window.localStorage.getItem('proxy') || '[]')
+    const proxyArray = configStore.getProxys()
     proxys.value  = proxyArray
-
-    // if(optimize.aria2Host || optimize.accountAutomatic) {
-    //   optimizeData.value = optimize
-    // }
     initPage()
     window.onbeforeunload = function (e) {
       if(!window.$downId || window.$downId.length === 0) {
@@ -722,7 +719,7 @@ import axios from 'axios';
   })
   const newUrl = ref()
   const taskRef = ref()
-  const proxys = ref([])
+  const proxys = ref<string[]>([])
   const firstFolder = computed(() => {
     let id:string = ''
     if(route.params.id) {

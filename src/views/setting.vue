@@ -1,6 +1,6 @@
 <template>
   <div class="list-page">
-    <n-collapse :default-expanded-names="['-1', '0', '3', '5','6', '7']">
+    <n-collapse :default-expanded-names="[ '3' ]">
       <n-collapse-item name="-1" >
         <template #header>
           绑定telegram   <a @click.stop="" href="https://www.tjsky.net/?p=220#Telegram" target="_blank"> <n-icon style="vertical-align: middle;" size="20" color="#d03050"><zoom-question></zoom-question></n-icon> </a>
@@ -58,7 +58,7 @@
           </n-form-item>
         </n-form>
       </n-collapse-item>
-      <n-collapse-item name="2" title="加密设置" v-if="optimizeData.accountAutomatic">
+      <n-collapse-item name="2" title="加密设置" v-if="optimizeData.key">
         <n-form label-width="100px" label-align="left" label-placement="left">
           <n-form-item label="文本：">
             <n-input v-model:value="aesData.origin"></n-input>
@@ -83,18 +83,15 @@
       <n-collapse-item name="4" title="优化设置">
         <n-form label-width="100px" label-align="left" label-placement="left">
           <n-form-item label="替换域：">
-            <n-input v-model:value="optimizeData.url" placeholder="格式像这样161.117.80.120"></n-input>
+            <n-input v-model:value="optimizeData.replaceUrl" placeholder="格式像这样161.117.80.120"></n-input>
           </n-form-item>
-          <n-form-item label="aria2服务：">
-            <n-input v-model:value="optimizeData.aria2Host"></n-input>
+          <n-form-item label="密匙：">
+            <n-input v-model:value="optimizeData.key"></n-input>
           </n-form-item>
           <n-form-item label="自动账号：">
             <n-switch v-model:value="optimizeData.accountAutomatic"></n-switch>
           </n-form-item>
-          <n-form-item label="密匙：" v-if="optimizeData.accountAutomatic">
-            <n-input v-model:value="optimizeData.key"></n-input>
-          </n-form-item>
-          <n-form-item label="账号服务：" v-if="optimizeData.accountAutomatic">
+          <n-form-item label="账号服务：" v-if="optimizeData.accountAutomatic" placeholder="请输入加密后的账号服务">
             <n-input v-model:value="optimizeData.accountHost"></n-input>
           </n-form-item>
           <n-form-item>
@@ -136,6 +133,7 @@ import { Browser, ZoomQuestion } from '@vicons/tabler'
 import {proxy as proxyDefault} from '../config'
 import ClipboardJS from 'clipboard'
 import aes from '../utils/aes'
+import { Aria2, Optimize, aria2Store, optimizeStore, configStore, loginStore } from '../utils/localstore'
 const logs = ref([
   '手机注册登陆',
   '添加推广下载',
@@ -147,18 +145,8 @@ const logs = ref([
   '资源库分页，分享秒传支持文件及',
   '....'
 ])
-const aria2Data = ref({
-  host: '',
-  token: '',
-  dir: true
-})
-const optimizeData = ref({
-  url: '',
-  accountAutomatic: false,
-  key: undefined,
-  aria2Host: '',
-  accountHost: ''
-})
+const aria2Data = ref<Aria2>({host: ""})
+const optimizeData = ref<Optimize>({ accountAutomatic: false})
 const aesData = ref({
   origin: '',
   encrypted: ''
@@ -205,7 +193,7 @@ const testAria2 = () => {
       if(res.error && res.error.message) {
         window.$message.error(res.error.message)
       } else if(res.result) {
-        window.localStorage.setItem('pikpakAria2', JSON.stringify(aria2Data.value))
+        aria2Store.saveAria2Data(aria2Data.value)
         window.$message.success('保存成功')
       }
     })
@@ -213,19 +201,16 @@ const testAria2 = () => {
 }
 
 const saveAria2Direct = () => {
-  window.localStorage.setItem('pikpakAria2', JSON.stringify(aria2Data.value))
+  aria2Store.saveAria2Data(aria2Data.value)
   window.$message.success('保存成功')
 }
 const saveOptimize = () => {
-  if(!optimizeData.value.accountAutomatic) {
-    optimizeData.value.key = undefined
-  } 
   if (optimizeData.value.accountAutomatic && !optimizeData.value.key) {
     window.$message.error('保存失败，请填写密匙！')
   } else if (optimizeData.value.accountAutomatic && !optimizeData.value.accountHost) {
     window.$message.error('保存失败，请填写账号服务地址！')
   } else {
-    window.localStorage.setItem('pikpakOptimize', JSON.stringify(optimizeData.value))
+    optimizeStore.saveOptimizeData(optimizeData.value)
     window.$message.success('保存成功')
   }
 }
@@ -257,55 +242,46 @@ const loginPost = () => {
       positiveText: '确定',
       negativeText: '不确定',
       onPositiveClick: () => {
-        window.localStorage.setItem('pikpakLoginData', JSON.stringify(loginData.value))
+        loginStore.saveCurrentAccount(loginData.value)
       },
       onNegativeClick: () => {
       },
     })
   } else {
-    window.localStorage.removeItem('pikpakLoginData')
+    loginStore.removeCurrent()
   }
 }
 const proxyData = ref('')
 const proxyPost = () => {
-  let proxyValue = proxyData.value.split('\n').filter(item => item != '')
-  window.localStorage.setItem('proxy', JSON.stringify(proxyValue))
-  window.localStorage.setItem('isSettingProxy', 'true')
+  let proxyValue: string[] = proxyData.value.split('\n').filter(item => item != '')
+  configStore.saveProxys(proxyValue)
+  configStore.setIsSetting(true)
 }
 const proxyReset = () => {
-  window.localStorage.setItem('proxy', JSON.stringify(proxyDefault))
-  window.localStorage.removeItem('isSettingProxy')
+  configStore.saveProxys(proxyDefault)
+  configStore.removeIsSetting()
   proxyData.value = proxyDefault.join('\n')
 }
 onMounted(() => {
-  let aria2 = JSON.parse(window.localStorage.getItem('pikpakAria2') || '{}')
-  let optimize = JSON.parse(window.localStorage.getItem('pikpakOptimize') || '{}')
+  aria2Data.value = aria2Store.getAria2Data()
+  optimizeData.value = optimizeStore.getOptimizeData()
   var userAgent = navigator.userAgent
   if (userAgent.indexOf("Safari") > -1 && userAgent.indexOf("Macintosh") > -1 && userAgent.indexOf("Edg") === -1 && userAgent.indexOf("Chromme") === -1) {
     safari.value = true
   }
-  if(aria2.dir === undefined) {
-    aria2.dir = true
-  }
-  if(aria2.host) {            
-    aria2Data.value = aria2
-  }
-  if(optimize?.url || optimize?.accountAutomatic || optimize?.aria2Host) {
-    optimizeData.value = optimize
-  }
-  let login = JSON.parse(window.localStorage.getItem('pikpakLoginData') || '{}')
+  let login = loginStore.getCurrent()
   if(login.username && login.password) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
     loginData.value = login
     loginSwitch.value = true 
   }
-  let proxy = JSON.parse(window.localStorage.getItem('proxy') || '[]')
-  if(proxy.length) {
-    proxyData.value = proxy.join('\n')
+  let proxys = configStore.getProxys()
+  if(proxys.length) {
+    proxyData.value = proxys.join('\n')
   }
 })
 const telegramUrl = ref()
 const goTelegram = () => {
-  let login = JSON.parse(window.localStorage.getItem('pikpakLogin') || '{}')
+  let login = loginStore.getLoginInfo()
   if(!login && !login.access_token) {
     window.$message.error('请先登陆')
     return false

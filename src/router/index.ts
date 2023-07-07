@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 import Layout from '../views/layout/index.vue'
+import { loginStore } from '../utils/localstore'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
@@ -7,7 +8,7 @@ const routes: RouteRecordRaw[] = [
     component: Layout,
     redirect: '/list',
     beforeEnter: (to, from, next) => {
-      const pikpakLogin = JSON.parse(window.localStorage.getItem('pikpakLogin') || '{}')
+      const pikpakLogin = loginStore.getLoginInfo()
       if((!pikpakLogin || !pikpakLogin.access_token) && to.name !== 'setting') {
        next('/login')
       } else {

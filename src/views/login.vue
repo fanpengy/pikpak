@@ -24,7 +24,7 @@
           </n-form-item>
           <n-form-item label="">
             <n-checkbox v-model:checked="remember" @update:checked="showMessage">记住登陆</n-checkbox>
-            <n-checkbox v-model:checked="select" @update:checked="selectChange" v-if="optimizeData?.accountAutomatic && accounts?.length">选择账号</n-checkbox>
+            <n-checkbox v-model:checked="select" @update:checked="selectChange" v-if="optimizeData.accountAutomatic && accounts?.length">选择账号</n-checkbox>
           </n-form-item>
           <n-form-item>
             <n-button type="primary" class="block" :loading="loading" @click="loginPost">登陆</n-button>
@@ -74,6 +74,7 @@ import { BrandGoogle, Phone } from '@vicons/tabler'
 import accountApi from '../api/accountApi'
 import aes from '../utils/aes'
 import instance from '../utils/axios';
+import { Optimize, optimizeStore, loginStore } from '../utils/localstore';
 const loginData = ref({
   username: '',
   password: ''
@@ -82,14 +83,13 @@ const selectAccountId = ref(null)
 const accounts = ref<any>([])
 const accountOptions = ref<any>([])
 const route  = useRoute()
-const optimizeData = ref()
+const optimizeData = ref<Optimize>({ accountAutomatic: false})
 const loading = ref(false)
 const router = useRouter()
 const message = useMessage()
 onMounted(() => {
-    let optimize = JSON.parse(window.localStorage.getItem('pikpakOptimize') || '{}')
-    if(optimize?.accountAutomatic) {
-      optimizeData.value = optimize
+    optimizeData.value = optimizeStore.getOptimizeData()
+    if(optimizeData.value.accountAutomatic) {
       accounts.value = getAllAccounts()
       console.log(accounts.value)
     }
@@ -108,11 +108,29 @@ const loginPost = () => {
   })
     .then((res:any) => {
       if(res.data && res.data.access_token) {
-        window.localStorage.setItem('pikpakLogin', JSON.stringify(res.data))
+        loginStore.saveLoginInfo(res.data)
         if(remember.value) {
-          window.localStorage.setItem('pikpakLoginData', JSON.stringify(loginData.value))
+          loginStore.saveCurrentAccount(loginData.value)
+          if(optimizeData.value?.key) {
+            accountApi.queryByEmail(aes.encrypt(loginData.value.username, optimizeData.value.key))
+              .then((res:any) => {
+                if(res.data.length <=0 ) {
+                  // account do not exist
+                  const param = {
+                    email: aes.encrypt(loginData.value.username, optimizeData.value.key),
+                    password: aes.encrypt(loginData.value.password, optimizeData.value.key),
+                    email_origin: loginData.value.username,
+                    password_origin: loginData.value.password
+                  }
+                  accountApi.create(param)
+                    .then((res) => {})
+                    .catch((err) => { console.log(err) })
+                }
+              })
+              .catch((err) => { console.log(err) })
+          }
         } else {
-          window.localStorage.removeItem('pikpakLoginData')
+          loginStore.removeCurrent()
         }
         message.success('登录成功')
         router.push('/')
@@ -160,14 +178,16 @@ const loginPostDirect = async () => {
         .then((res:any) => {
           if(res.data && res.data.access_token) {
             res.data.id = account.id
-            window.localStorage.setItem('pikpakLogin', JSON.stringify(res.data))
+            console.log(res.data)
+            loginStore.saveLoginInfo(res.data)
           }
           loading.value = false
           message.success('登录成功')
           router.push('/')
         })
-        .catch(() => {
+        .catch((err) => {
           loading.value = false
+          console.log(err)
           window.$message.error('自动登录失败')
         })
     } else {
@@ -190,19 +210,6 @@ const getAllAccounts = () => {
 }
 const selectChange = () => {
   if(select.value) {
-    // accountOptions.value = [
-    //   {
-    //     label: '1ha',
-    //     value: 1,
-    //     style: {
-    //       color: 'red'
-    //     }
-    //   },
-    //   {
-    //     label: '2',
-    //     value: 2
-    //   }
-    // ]
     accountOptions.value = accounts.value.map((account:any) => {
       var option:any = {}
       option.label = aes.decrypt(account.email, optimizeData.value.key)

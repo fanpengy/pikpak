@@ -4,7 +4,7 @@ import { onMounted } from '@vue/runtime-core';
   import { GlobalThemeOverrides, NConfigProvider, NMessageProvider, zhCN, dateZhCN, NDialogProvider, NNotificationProvider } from 'naive-ui'
   import MessageContent from './components/MessageContent.vue';
   import { version, proxy } from './config'
-  import aes from './utils/aes'
+  import { configStore } from './utils/localstore';
   const themeOverrides = ref<GlobalThemeOverrides>({
     common: {
       primaryColor: '#306eff',
@@ -30,9 +30,10 @@ import { onMounted } from '@vue/runtime-core';
     }
   })
   onMounted(() => {
-    const isSettingProxy = localStorage.getItem('isSettingProxy')
+    const isSettingProxy = configStore.getIsSetting()
     if(!isSettingProxy) {
-      localStorage.setItem('proxy', JSON.stringify(proxy))
+      configStore.saveProxys(proxy)
+      configStore.saveVersion(version)
     }
   })
 </script>

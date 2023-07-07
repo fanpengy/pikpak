@@ -11,12 +11,11 @@
       @expand="collapsed = false"
       bordered
     >
-      <a href="https://mypikpak.com/" target="_blank" class="logo-box">
+      <!-- <a href="https://mypikpak.com/" target="_blank" class="logo-box">
        <img src="https://mypikpak.com/apple-touch-icon.png" class="logo-box__icon" alt="">
         <div class="logo-box__text">PikPak</div>
-      </a>
-      <n-menu :options="menuOptions" :value="String(route.name)" @update:value="goRoute"></n-menu>
-      <div class="content-bottom" v-if="!collapsed">
+      </a> -->
+      <!-- <div class="content-bottom" v-if="!collapsed">
         {{byteConvert(aboutInfo?.quota.usage)}} / {{byteConvert(aboutInfo?.quota.limit)}} <n-text type="primary" @click="showCode = true">会员码 </n-text> 
         <n-icon @click="getInfo"><refresh/></n-icon>
         <n-icon @click="markAccount"><target/></n-icon>
@@ -37,29 +36,36 @@
                【请依次点选：设置-代理设置-恢复默认-保存设置 后再刷新试试】 
           </n-tooltip>
        </p>
-      </div>
-      <div class="sider-bottom" v-if="!collapsed" :class="{vip: vipInfo?.status === 'ok'}">
-        <div class="bottom-user-info">
-          <img src="../../assets/logo1.png" class="user-info-avatar" v-if="vipInfo?.status === 'ok'">
-          <img src="../../assets/avatar.png" v-else class="user-info-avatar">
+      </div> -->
+      <div class="sider-top" v-if="!collapsed" :class="{vip: vipInfo?.status === 'ok'}">
+        <div class="top-user-info">
+          <n-progress
+            type="circle"
+            :percentage="Number((aboutInfo?.quota.usage / aboutInfo?.quota.limit * 100).toFixed(2))"
+            :color="vipInfo?.status === 'ok' ? '#d1ae6a' : undefined"
+            style="width: 52px; height: 52px;"
+          >
+            <n-dropdown trigger="hover" placement="bottom" :options="a.options" @select="a.handleSelect">
+              <n-avatar
+                round
+                :size="45"
+                :src="vipInfo?.status === 'ok' ? vip_avatar : avatar"
+                :fallback-src="avatar"
+              />
+            </n-dropdown>
+          </n-progress>
           <div class="user-info-name">
             {{userInfo?.name}}
-            <div v-if="vipInfo?.status === 'ok' && vipInfo?.expire">
-               <n-time :time="new Date(vipInfo.expire)" type="datetime"></n-time>
-            </div>
-          </div>
-          <div class="action">
-            <n-tooltip>
-              <template #trigger>
-                <n-icon @click="logoutPost">
-                  <logout></logout>
-                </n-icon>
-              </template>
-              退出登录
-            </n-tooltip>
+            <br>
+            <n-space v-if="vipInfo?.status === 'ok' && vipInfo?.expire">
+              <n-time :time="new Date(vipInfo.expire)" type="datetime"></n-time>
+              <br>
+            </n-space>
+            {{byteConvert(aboutInfo?.quota.usage)}} / {{byteConvert(aboutInfo?.quota.limit)}}
           </div>
         </div>
       </div>
+      <n-menu :options="menuOptions" :value="String(route.name)" @update:value="goRoute" style="padding-top: 85px;"></n-menu>
     </n-layout-sider>
     <n-layout>
       <n-layout-content style="height: 100vh;">
@@ -85,17 +91,50 @@
 </template>
 
 <script setup lang="ts">
+
 import { ref } from '@vue/reactivity';
 import { h, onMounted, watch } from '@vue/runtime-core';
-import { NLayout, NLayoutSider, NLayoutContent, NMenu, MenuOption, NIcon, NProgress, NText, NModal, NCard, NInput, NButton, NScrollbar, NTime, NTooltip, useDialog } from 'naive-ui'
+import { NLayout, NLayoutSider, NLayoutContent, NMenu, MenuOption, NIcon, NProgress, NText, NModal, NCard, NInput, NButton, NScrollbar, NTime, NTooltip, useDialog, NDropdown, NAvatar, NSpace } from 'naive-ui'
 import { File, Trash, CircleX, Logout, Settings, Share, Copy, Video, Camera, Refresh, Target } from '@vicons/tabler'
 import http from '../../utils/axios'
 import accountApi from '../../api/accountApi'
 import { byteConvert } from '../../utils'
 import { useRoute, useRouter } from 'vue-router'
+import avatar from '../../assets/avatar.png'
+import vip_avatar from '../../assets/vip-avatar.png'
+import { loginStore } from '../../utils/localstore'
+
   const collapsed = ref(false)
   const  renderIcon = (icon:any) => {
     return () => h(NIcon, null, { default: () => h(icon) })
+  }
+  const a = {
+    options: [
+      {
+        label: '登出',
+        key: 'logout',
+        icon: renderIcon(Logout)
+      },
+      {
+        label: '标记',
+        key: 'mark',
+        icon: renderIcon(Target)
+      },
+      {
+        label: '刷新',
+        key: 'refresh',
+        icon: renderIcon(Refresh)
+      }
+    ],
+    handleSelect: (key: string) => {
+      if (key === 'logout') {
+        logoutPost()
+      } else if(key === 'mark') {
+        markAccount()
+      } else if(key === 'refresh') {
+        getInfo()
+      }
+    }
   }
   const router = useRouter()
   const route = useRoute()
@@ -178,7 +217,7 @@ import { useRoute, useRouter } from 'vue-router'
     getAbout()
   }
   const markAccount = () => {
-    const login = JSON.parse(window.localStorage.getItem('pikpakLogin') || '{}')
+    const login = loginStore.getLoginInfo()
     const id = login.id ? login.id : -1
     if(id === -1) {
       window.$message.error('当前账号不支持此操作！')
@@ -236,8 +275,8 @@ import { useRoute, useRouter } from 'vue-router'
         onPositiveClick: () => {
           http.post('https://user.mypikpak.com/v1/auth/revoke', {})
             .then(res => {
-              window.localStorage.removeItem('pikpakLogin')
-              window.localStorage.removeItem('pikpakLoginData')
+              loginStore.removeLoginInfo()
+              loginStore.removeCurrent()
               window.$message.success('退出成功')
               router.push('/login')
             })
@@ -286,21 +325,22 @@ import { useRoute, useRouter } from 'vue-router'
   .n-progress {
     margin-top: 4px;
   }
-  .sider-bottom {
-    height: 75px;
+  .sider-top {
+    height: 100px;
     width: 100%;
     position: absolute;
-    bottom: 0;
+    /* bottom: 0; */
+    top: 0;
     display: flex;
     justify-content: center;
     flex-direction: column;
-    padding: 0 20px 0 24px;
+    padding: 0 10px 0 10px;
     box-sizing: border-box;
   }
-  .sider-bottom.vip {
+  .sider-top.vip {
     background-color: #f4eddb;
   }
-  .sider-bottom::before {
+  .sider-top::before {
     display: block;
     content: '';
     width: 100%;
@@ -310,30 +350,30 @@ import { useRoute, useRouter } from 'vue-router'
     left: 0;
     background: rgba(132, 133, 141, 0.2)
   }
-  .bottom-user-info {
+  .top-user-info {
     width: calc(100% - 36px);
     margin-right: 4px;
     display: flex;
-    height: 32px;
+    height: 80%;
     align-items: center;
     width: 100%;
   }
   .user-info-avatar {
-    width: 32px;
-    height: 32px;
+    width: 45px;
+    height: 45px;
     border-radius: 50%;
   }
   .user-info-name {
     font-size: 14px;
-    line-height: 1.5;
-    margin-left: 4px;
+    line-height: 1.6;
+    margin-left: 10px;
     max-width: 100%;
     overflow: hidden;
     white-space: nowrap;
     flex: 1;
     width: 0;
   }
-  .bottom-user-info .action{
+  .top-user-info .action{
     font-size: 18px;
     cursor: pointer;
   }

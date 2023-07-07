@@ -112,6 +112,7 @@ import { NEllipsis, NScrollbar, NProgress, NIcon, NSpin, NSpace, NEmpty, NCard, 
 import { byteConvert } from '../utils'
 import { PlayerPlay, PlayerPause, CircleX, Refresh, Clock, CircleCheck } from '@vicons/tabler'
 import aria2Api from '../api/aria2Api';
+import { aria2Store } from '../utils/localstore'
   const aria2Data = ref()
   const tasksInfo = ref({
     actives: 0,
@@ -353,7 +354,7 @@ import aria2Api from '../api/aria2Api';
     getTasks()
   })
   onMounted(() => {
-    let aria2 = JSON.parse(window.localStorage.getItem('pikpakAria2') || '{}')
+    let aria2 = aria2Store.getAria2Data()
     if(aria2.dir === undefined) {
       aria2.dir = true
     }

@@ -2,17 +2,18 @@ import axios from 'axios'
 import router from '../router/index'
 import accountApi from '../api/accountApi'
 import aes from './aes'
+import { optimizeStore, configStore, loginStore } from './localstore'
 
 const instance = axios.create({})
 
 instance.interceptors.request.use(request => {
-  const pikpakLogin = JSON.parse(window.localStorage.getItem('pikpakLogin') || '{}')
+  const pikpakLogin = loginStore.getLoginInfo()
   request.headers = request.headers || {}
   if (pikpakLogin.access_token) {
     request.headers['Authorization'] = `${pikpakLogin.token_type || 'Bearer'} ${pikpakLogin.access_token}`
   }
   if(request.url?.indexOf('https://', 4) === -1) {
-    const proxyArray = JSON.parse(window.localStorage.getItem('proxy') || '[]')
+    const proxyArray = configStore.getProxys()
     if (proxyArray.length > 0) {
       const index = Math.floor((Math.random() * proxyArray.length))
       request.url = proxyArray[index] + '/' + request.url
@@ -30,8 +31,9 @@ instance.interceptors.response.use(response => {
       case 401:
         console.log(1)
         // router.push('/login')
-        const loginData = window.localStorage.getItem('pikpakLoginData')
-        const loginDataJson = loginData ? JSON.parse(loginData) : {}
+        const loginData = loginStore.getCurrent()
+        console.log(loginData)
+        const loginDataJson = loginData
         if(loginDataJson.username && loginDataJson.password && !isLoginLoading) {
           console.log('wait', config.url)
           isLoginLoading = true
@@ -43,7 +45,7 @@ instance.interceptors.response.use(response => {
           })
             .then((res:any) => {
               if(res.data && res.data.access_token) {
-                window.localStorage.setItem('pikpakLogin', JSON.stringify(res.data))
+                loginStore.saveLoginInfo(res.data)
               }
               isLoginLoading = false
               return instance(config)
@@ -71,8 +73,8 @@ instance.interceptors.response.use(response => {
       //   window.$message.error(response.data.error_description || '出错了')
       case 403:
         if(response?.data?.error === 'task_daily_create_limit') {
-          const login = JSON.parse(window.localStorage.getItem('pikpakLogin') || '{}')
-          const optimize = JSON.parse(localStorage.getItem('pikpakOptimize') || '{}')
+          const login = loginStore.getLoginInfo()
+          const optimize = optimizeStore.getOptimizeData()
           if(optimize?.accountAutomatic) {
             window.$message.warning((response?.data?.error_description || '出错了') + ' 尝试切换账号')
             const accountId = login.id ? login.id : -1
@@ -107,7 +109,7 @@ instance.interceptors.response.use(response => {
                   .then((res:any) => {
                     if(res.data && res.data.access_token) {
                       res.data.id = account.id
-                      window.localStorage.setItem('pikpakLogin', JSON.stringify(res.data))
+                      loginStore.saveLoginInfo(res.data)
                     }
                     isLoginLoading = false
                     window.$message.success('登录成功')
@@ -154,7 +156,7 @@ instance2.interceptors.request.use(request => {
     'Notion-Version': '2021-08-16',
     'Content-Type': 'application/json'
   }
-  const proxyArray = JSON.parse(window.localStorage.getItem('proxy') || '[]')
+  const proxyArray = configStore.getProxys()
   if (proxyArray.length > 0) {
     const index = Math.floor((Math.random() * proxyArray.length))
     request.url = proxyArray[index] + '/' + request.url
@@ -165,8 +167,8 @@ instance2.interceptors.request.use(request => {
 const instance3 = axios.create({})
 instance3.interceptors.request.use(request => {
   var url = request?.url
-  const optimize = JSON.parse(localStorage.getItem('pikpakOptimize') || '{}')
-  if(url && optimize?.accountAutomatic) {
+  const optimize = optimizeStore.getOptimizeData()
+  if(url && optimize.accountAutomatic && optimize.accountHost) {
     if(!url.startsWith('https://localhost:3000')) {
       //https://encryptuyhasiuhsiusdecrypt/account/get
       var start = url.indexOf('encrypt') + 7
@@ -175,7 +177,7 @@ instance3.interceptors.request.use(request => {
       var domain = aes.decrypt(encrypted, optimize.key)
       request.url = 'https://' + domain + url.substring(end + 7)
       //使用反代
-      const proxyArray = JSON.parse(window.localStorage.getItem('proxy') || '[]')
+      const proxyArray = configStore.getProxys()
       if (proxyArray.length > 0) {
         const index = Math.floor((Math.random() * proxyArray.length))
         request.url = proxyArray[index] + '/' + request.url
@@ -183,7 +185,7 @@ instance3.interceptors.request.use(request => {
     } else {
       url = url.replace("localhost:3000",optimize.accountHost)
       if(optimize.accountHost.search(/:/g) === -1) {
-        const proxyArray = JSON.parse(window.localStorage.getItem('proxy') || '[]')
+        const proxyArray = configStore.getProxys()
         if (proxyArray.length > 0) {
           const index = Math.floor((Math.random() * proxyArray.length))
           url = proxyArray[index] + '/' + url

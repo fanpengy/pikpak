@@ -59,6 +59,7 @@ import { useRouter } from 'vue-router'
 import { BrandGoogle } from '@vicons/tabler'
 import {  onUnmounted } from '@vue/runtime-core'
 import axios from 'axios';
+import { loginStore } from '../utils/localstore'
 const loginData = ref({
   email: '',
   password: '',
@@ -212,8 +213,8 @@ const register = (e:Event) => {
                   if(invite.value) {
                     vipInvite(res.data)
                   }
-                  window.localStorage.setItem('pikpakLogin', JSON.stringify(res.data))
-                  window.localStorage.removeItem('pikpakLoginData')
+                  loginStore.saveLoginInfo(res.data)
+                  loginStore.removeCurrent()
                   message.success('注册成功')
                   router.push('/')
                 })

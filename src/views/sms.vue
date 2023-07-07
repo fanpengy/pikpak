@@ -60,6 +60,7 @@ import http from '../utils/axios'
 import { useRouter } from 'vue-router'
 import { BrandGoogle, Mail } from '@vicons/tabler'
 import {  onUnmounted } from '@vue/runtime-core'
+import { loginStore } from '../utils/localstore' 
 import axios from 'axios';
 const loginData = ref({
   phone_number: '',
@@ -189,8 +190,8 @@ const register = (e:Event) => {
                 if(invite.value && !isUser.value) {
                   vipInvite(res.data)
                 }
-                window.localStorage.setItem('pikpakLogin', JSON.stringify(res.data))
-                window.localStorage.removeItem('pikpakLoginData')
+                loginStore.saveLoginInfo(res.data)
+                loginStore.removeCurrent()
                 message.success('登录成功')
                 router.push('/')
               })
