@@ -1004,7 +1004,7 @@ import { optimizeStore, aria2Store, configStore } from '../utils/localstore'
           // } else {
           //   aria2PushDirect(media.url, aria2Config.value.out)
           // }
-          aria2Push(key, true)
+          aria2Push(key, false)
           if(nRef.value?.content) {
             nRef.value.content = nRef.value?.content + '\r\n' + '推送' + data.parent + '/' + data.name + '成功'
           }
@@ -1108,6 +1108,7 @@ import { optimizeStore, aria2Store, configStore } from '../utils/localstore'
     if(replace) {
       url = linkReplace.value.replace ? media.replace : media.url
     }
+    console.log(url)
     let name:string = aria2Config.value.out
     // const out = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00').replace(/.mp4/g, 's.mp4')
     // const out_h264 = res.data.name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00')

@@ -116,14 +116,14 @@ import { loginStore } from '../../utils/localstore'
         icon: renderIcon(Logout)
       },
       {
-        label: '标记',
-        key: 'mark',
-        icon: renderIcon(Target)
-      },
-      {
         label: '刷新',
         key: 'refresh',
         icon: renderIcon(Refresh)
+      },
+      {
+        label: '标记',
+        key: 'mark',
+        icon: renderIcon(Target)
       }
     ],
     handleSelect: (key: string) => {
