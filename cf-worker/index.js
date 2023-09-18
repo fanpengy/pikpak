@@ -71,7 +71,7 @@ addEventListener('fetch', event => {
                 }
             }
             // 发起 fetch
-            let fr = (await fetch(url, fp));
+            let fr = (await fetch(new URL(url), fp));
             outCt = fr.headers.get('content-type');
             if(outCt && (outCt.includes('application/text') || outCt.includes('text/html'))) {
               try {
