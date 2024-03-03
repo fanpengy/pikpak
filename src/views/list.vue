@@ -233,7 +233,7 @@
     </n-modal>
 
     <n-modal v-model:show="showAriaOption">
-      <n-card style="width: 800px;" title="Aria2选项">
+      <n-card style="width: 800px;" :title="'Aria2选项: ' + aria2Config.out">
         <template #header-extra>
           <n-space>
             <span v-if="linkReplace.replace">替换链接</span>
