@@ -101,6 +101,16 @@
             彻底删除所选
           </n-tooltip>
         </div>
+        <!-- <div class="toolbar-item" @click="batchNamePost">
+          <n-tooltip>
+            <template #trigger>
+              <n-icon>
+                <letter-r></letter-r>
+              </n-icon>
+            </template>
+            批量重命名
+          </n-tooltip>
+        </div> -->
       </div>
     </div>
     <n-modal v-model:show="showAddUrl">
@@ -303,7 +313,7 @@ import { h, computed, onMounted, watch, nextTick } from '@vue/runtime-core'
 import http, { notionHttp } from '../utils/axios'
 import { useRoute, useRouter } from 'vue-router'
 import { DataTableColumns, NDataTable, NTime, NEllipsis, NModal, NCard, NInput, NBreadcrumb, NBreadcrumbItem, NIcon, useThemeVars, NButton, NTooltip, NSpace, NScrollbar, NSpin, NDropdown, useDialog, NAlert, useNotification, NotificationReactive, NSelect, NForm, NFormItem, NTag, NText, NInputGroup , NSwitch, NTabs, NTabPane, NList, NListItem, NThing} from 'naive-ui'
-import { CirclePlus, CircleX, Dots, Share, Copy as IconCopy, SwitchHorizontal, LetterA, ZoomQuestion, Trash as IconDelete } from '@vicons/tabler'
+import { CirclePlus, CircleX, Dots, Share, Copy as IconCopy, SwitchHorizontal, LetterA, LetterR, ZoomQuestion, Trash as IconDelete } from '@vicons/tabler'
 import { byteConvert } from '../utils'
 import PlyrVue from '../components/Plyr.vue'
 import TaskVue from '../components/Task.vue'
@@ -1295,6 +1305,53 @@ import { optimizeStore, aria2Store, configStore } from '../utils/localstore'
         showName.value = false
       })
   }
+
+  const batchNamePost = async () => {
+
+    await getAllFile()
+    // 处理命名规则
+    //hhd800.com@ADN-379.mp4
+    // if(name.search(/.+\..+@/g) != -1) {
+    //   name = name.replace(/.+\..+@/g, '').toLowerCase().replace(/-/g, '00')
+    // }
+    const postOne =  () => {
+      const data:any = downFileList.value.shift()
+      const name = data.name.replace(/hhd800.com@/g, '').replace(/\.FHD/g, '').replace(/IPX/g, 'IPX-')
+      const id = data.id
+
+      http.patch('https://api-drive.mypikpak.com/drive/v1/files/' + id, {
+        name: name
+      })
+        .then(() => {
+          // getFileList()
+          if(nRef.value?.content) {
+            nRef.value.content = nRef.value?.content + '\r\n' + '修改' + data.parent + '/' + data.name + '成功'
+          }
+        })
+        .catch(error => {
+          if(nRef.value?.content) {
+            nRef.value.content = nRef.value?.content + '\r\n' + '修改' + data.parent + '/' + data.name + '失败'
+          }
+          downFileList.value.push(data)
+        })
+        .finally(() => {
+          if(downFileList.value.length) {
+            setTimeout(() => {
+              postOne()
+            }, 3000)
+          } else {
+            setTimeout(() => {
+              nRef.value?.destroy()
+              getFileList()
+              allLoding.value = false
+            }, 1000);
+          }
+        })
+    }
+    postOne()
+
+  }
+
   const downFileList = ref<{[key:string]:any}[]>([])
   const getFloderFile = async (id?:string, page?:string,parent?:string) => {
     const res:any = await http.get('https://api-drive.mypikpak.com/drive/v1/files', {
